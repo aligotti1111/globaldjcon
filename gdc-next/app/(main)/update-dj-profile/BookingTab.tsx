@@ -554,40 +554,6 @@ export default function BookingTab({
                   </select>
                 </div>
 
-                {/* Partial-fill — only meaningful when more than one booking a
-                    day is allowed. When on, a day fills red proportionally to
-                    how many slots are taken (1 of 3 ≈ 1/3 red); off, a day shows
-                    no red until it's completely booked, then fully red. */}
-                {perDay > 1 && (
-                  <div className={styles.settingRow} style={{ paddingTop: '1.1rem', marginTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.06)' }}>
-                    <div className={styles.settingLabelWrap}>
-                      <div className={styles.settingLabel}>Show how full each day is</div>
-                      <div className={styles.settingHint}>
-                        Fills a day red in proportion to its bookings (e.g. 1 of {perDay} shows about a third red). Off: a day only turns red once it&rsquo;s fully booked.
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={partialFill}
-                      aria-label="Show how full each day is"
-                      onClick={() => { setLastChangedField('settings'); patch({ mob_partial_fill: !partialFill }); }}
-                      style={{
-                        position: 'relative', width: 46, height: 26, borderRadius: 999,
-                        border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0,
-                        background: partialFill ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
-                        transition: 'background .15s ease',
-                      }}
-                    >
-                      <span style={{
-                        position: 'absolute', top: 3, left: partialFill ? 23 : 3,
-                        width: 20, height: 20, borderRadius: '50%', background: '#fff',
-                        transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
-                      }} />
-                    </button>
-                  </div>
-                )}
-
                 {/* Currency — hidden for now (we only ship USD today) but the
                     full picker + wiring is kept below so we can re-enable it by
                     deleting the `false &&` guard. rateCurrency/setRateCurrency
@@ -721,6 +687,65 @@ export default function BookingTab({
                     }} />
                   </button>
                 </div>
+
+                {/* Fill-indicator — only meaningful when more than one booking a
+                    day is allowed. Kept last in the list; shows a small mockup so
+                    the DJ can see exactly what it does. */}
+                {perDay > 1 && (
+                  <div className={styles.settingRow} style={{ paddingTop: '1.1rem', marginTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.06)', alignItems: 'flex-start' }}>
+                    <div className={styles.settingLabelWrap}>
+                      <div className={styles.settingLabel}>Show how full each day is on your calendar</div>
+                      <div className={styles.settingHint}>
+                        You accept up to {perDay} bookings a day. With this on, each day on your public calendar
+                        fills in red to show how many of those {perDay} slots are taken — so visitors can see a day
+                        is partly booked, not just open or closed. With it off, a day stays clear until all {perDay}{' '}
+                        slots are booked, then turns fully red.
+                      </div>
+                      {/* Mini mockup: three example days at 1, 2 and 3 of 3 booked. */}
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: '.7rem' }}>
+                        {[
+                          { taken: 1, total: 3 },
+                          { taken: 2, total: 3 },
+                          { taken: 3, total: 3 },
+                        ].map((ex, i) => (
+                          <div key={i} style={{ textAlign: 'center' }}>
+                            <div style={{
+                              width: 38, height: 38, borderRadius: 6,
+                              border: '1px solid rgba(255,255,255,.18)',
+                              background: `linear-gradient(to top, rgba(255,95,95,0.55) ${(ex.taken / ex.total) * 100}%, rgba(255,255,255,.04) ${(ex.taken / ex.total) * 100}%)`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: '#fff', fontSize: '.78rem', fontWeight: 700,
+                            }}>
+                              {15 + i}
+                            </div>
+                            <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.62rem', marginTop: 4 }}>
+                              {ex.taken} of {ex.total}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={partialFill}
+                      aria-label="Show how full each day is on your calendar"
+                      onClick={() => { setLastChangedField('settings'); patch({ mob_partial_fill: !partialFill }); }}
+                      style={{
+                        position: 'relative', width: 46, height: 26, borderRadius: 999,
+                        border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0, marginTop: 2,
+                        background: partialFill ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
+                        transition: 'background .15s ease',
+                      }}
+                    >
+                      <span style={{
+                        position: 'absolute', top: 3, left: partialFill ? 23 : 3,
+                        width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                        transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
+                      }} />
+                    </button>
+                  </div>
+                )}
                 {/* Save status hint at the bottom of the section box.
                     Reserves a small fixed height so the layout doesn't
                     jump when the hint appears/disappears. */}
