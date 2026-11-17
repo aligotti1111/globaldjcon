@@ -30,7 +30,7 @@ const ORDER = ['contract', 'deposit', 'song_list', 'invoice', 'guestlist'];
 
 // Exact copies of the DJ strip's cell measurements. Labels wrap so each stage
 // can sit in a fixed-width column (keeps stages aligned row-to-row).
-const labelStyle: CSSProperties = { fontSize: 9, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: '#f0f0f8', whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'center' };
+const labelStyle: CSSProperties = { fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: '#f0f0f8', whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'center' };
 const capBase: CSSProperties = { fontSize: 9.5, fontWeight: 500, letterSpacing: '.03em', lineHeight: 1, minWidth: 36, textAlign: 'center', whiteSpace: 'nowrap' };
 
 export default function HostPipelineStrip({
@@ -158,7 +158,7 @@ export default function HostPipelineStrip({
         const capSpread: CSSProperties = spread ? { whiteSpace: 'normal', minWidth: 0 } : {};
         const inner = (
           <>
-            <span style={{ ...labelStyle, ...labelSpread, marginBottom: 2 }}>{stageLabel(st.key, djType)}</span>
+            <span style={{ ...labelStyle, ...labelSpread, marginBottom: 6 }}>{stageLabel(st.key, djType)}</span>
             {top}
             <span style={{ ...capBase, ...capSpread, color: capColor, marginTop: 5 }}>{st.caption}</span>
           </>
