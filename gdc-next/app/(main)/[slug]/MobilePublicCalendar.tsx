@@ -881,7 +881,7 @@ function SingleMonthView({
     // Proportional diagonal fill — matches the club/bar calendar exactly: a
     // 135° gradient filling to the booked fraction (1 of 5 ≈ 20% red).
     const partialBg = partialFrac > 0
-      ? `linear-gradient(135deg, #ff9b9b 0%, #ff9b9b ${Math.round(partialFrac * 100)}%, transparent ${Math.round(partialFrac * 100)}%, transparent 100%)`
+      ? `linear-gradient(135deg, rgba(255,95,95,.45) 0%, rgba(255,95,95,.45) ${Math.round(partialFrac * 100)}%, transparent ${Math.round(partialFrac * 100)}%, transparent 100%)`
       : undefined;
     const isLastRow =
       Math.floor((firstDay + d - 1) / 7) ===
@@ -1193,7 +1193,7 @@ function RollingMonthsView({
         ? Math.min(1, approvedCount / defaultBookingsPerDay)
         : 0;
       const miniPartialBg = miniPartialFrac > 0
-        ? `linear-gradient(135deg, #ff9b9b 0%, #ff9b9b ${Math.round(miniPartialFrac * 100)}%, transparent ${Math.round(miniPartialFrac * 100)}%, transparent 100%)`
+        ? `linear-gradient(135deg, rgba(255,95,95,.45) 0%, rgba(255,95,95,.45) ${Math.round(miniPartialFrac * 100)}%, transparent ${Math.round(miniPartialFrac * 100)}%, transparent 100%)`
         : undefined;
       cells.push(
         <div
