@@ -684,7 +684,8 @@ export async function POST(req: Request) {
     const subject = `Booking request cancelled by ${cancelledByName} – ${dateStr}`;
 
     // Build a recipient-specific email body. "you" wording differs per side.
-    const buildHtml = (intro: string): string => emailTemplate(buildBookingCancelledBody(intro, infoCard));
+    const refLine = `<p style="margin:18px 0 0;color:#bbb;font-size:11px;text-align:right;">Reference: ${escHtml(referenceCode(bookingId, 'other'))}</p>`;
+    const buildHtml = (intro: string): string => emailTemplate(buildBookingCancelledBody(intro, infoCard) + refLine);
 
     // Send to the DJ.
     if (djEmail) {
@@ -935,6 +936,7 @@ export async function POST(req: Request) {
         ${infoCard}
         ${noteBlock}
         ${contractLine}
+        <p style="margin:18px 0 0;color:#bbb;font-size:11px;text-align:right;">Reference: ${escHtml(referenceCode(bookingId, 'other'))}</p>
       `;
       await send(djEmail, subject, inner(hostName));
       await send(hostEmail, subject, inner(djName));
