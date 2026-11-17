@@ -25,6 +25,7 @@ import { getActingContext } from '@/lib/acting';
 import { logActivity } from '@/lib/activityLog';
 import { Resend } from 'resend';
 import { canUsePro, type AccessFields } from '@/lib/access';
+import { referenceCode } from '@/lib/paymentMethods';
 import { mobEventLabel, parseCustomEventTypes } from '@/lib/constants';
 import type { UpcomingBooking } from '@/app/(main)/upcoming-bookings/page';
 import {
@@ -452,13 +453,13 @@ export async function POST(req: Request) {
         ? (pastDue
           ? (isResend
             ? `<div style="background:#fdecec;border:1px solid #f3b6b6;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
-<p style="margin:0;color:#8a1f1f;font-size:14px;line-height:1.6;">Past due &mdash; your Planner &amp; Playlist was due<br/><strong style="color:#6f1515;font-size:16px;">${esc(dueLabel)}</strong><br/>Please complete it as soon as you can.</p>
+<p style="margin:0;color:#8a1f1f;font-size:14px;line-height:1.6;text-align:center;">Past due &mdash; your Planner &amp; Playlist was due<br/><strong style="color:#6f1515;font-size:16px;">${esc(dueLabel)}</strong><br/>Please complete it as soon as you can.</p>
 </div>`
             : `<div style="background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
-<p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;">Please return your completed Planner &amp; Playlist as soon as possible.</p>
+<p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;text-align:center;">Please return your completed Planner &amp; Playlist as soon as possible.</p>
 </div>`)
           : `<div style="background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
-<p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;">Please complete your Planner &amp; Playlist by<br/><strong style="color:#5a4300;font-size:16px;">${esc(dueLabel)}</strong></p>
+<p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;text-align:center;">Please complete your Planner &amp; Playlist by<br/><strong style="color:#5a4300;font-size:16px;">${esc(dueLabel)}</strong></p>
 </div>`)
         : '';
 
@@ -475,11 +476,12 @@ ${isResend
 <p style="margin:0 0 20px;color:#666;font-size:14px;line-height:1.7;">
 As you fill out the Planner &amp; Playlist page, everything you enter auto-saves as you go. Enter what you know now and come back to finish the rest whenever you're ready. The latest the planner can be completed is listed below.
 </p>
-<table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;">
+<table align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 20px;">
 <tr><td style="background:#000000;border-radius:8px;">
 <a href="${url}" style="display:inline-block;padding:14px 28px;color:#00f5c4;font-size:15px;font-weight:700;text-decoration:none;">Open Planner &amp; Playlist</a>
 </td></tr></table>
 ${dueBanner}
+<p style="margin:0 0 4px;color:#bbb;font-size:11px;line-height:1.6;text-align:center;">Reference: ${referenceCode(bookingId, 'other')}</p>
 <p style="margin:0;color:#999;font-size:12px;line-height:1.6;word-break:break-all;">
 Or paste this into your browser:<br/><a href="${url}" style="color:#999;">${url}</a>
 </p>
