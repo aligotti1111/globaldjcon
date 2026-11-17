@@ -22,6 +22,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { canBook, type AccessFields } from '@/lib/access';
 import { MOB_EVENT_LABELS } from '@/lib/constants';
+import { referenceCode } from '@/lib/paymentMethods';
 import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
@@ -96,6 +97,7 @@ type Booking = {
   event_type: string | null;
   venue_type: string | null;
   venue_name: string | null;
+  venue_address: string | null;
   event_date: string | null;
   start_time: string | null;
   end_time: string | null;
@@ -150,7 +152,7 @@ async function runDigest(
   // Confirmed = status 'approved' OR a DJ's manual booking.
   const { data } = await db
     .from('bookings')
-    .select('id, dj_id, requester_name, event_type, venue_type, venue_name, event_date, start_time, end_time, ceremony_needed, ceremony_start_time, cocktail_needed, cocktail_start_time')
+    .select('id, dj_id, requester_name, event_type, venue_type, venue_name, venue_address, event_date, start_time, end_time, ceremony_needed, ceremony_start_time, cocktail_needed, cocktail_start_time')
     .is('deleted_at', null)
     .gte('event_date', startYmd)
     .lte('event_date', endYmd)
@@ -193,9 +195,10 @@ async function runDigest(
 
     const rowsHtml = list.map((b) => {
       const type = esc(b.event_type ? (MOB_EVENT_LABELS[b.event_type] || b.event_type) : (b.venue_type || 'Booking'));
-      const who = b.requester_name ? esc(b.requester_name) : '';
       const when = fmtDate(b.event_date);
       const venue = b.venue_name ? esc(b.venue_name) : '';
+      const address = b.venue_address ? esc(b.venue_address) : '';
+      const ref = esc(referenceCode(b.id, 'other'));
       const timesHtml = eventTimes(b)
         .map((t) => `<div style="font-size:12px;color:#777;margin-top:3px;"><span style="color:#999;">${esc(t.label)}</span> <span style="color:#444;font-weight:600;">${esc(t.value)}</span></div>`)
         .join('');
@@ -205,8 +208,10 @@ async function runDigest(
 ${timesHtml}
 </td>
 <td style="padding:12px 0;border-bottom:1px solid #eee;vertical-align:top;">
-<div style="font-size:14px;color:#111;font-weight:600;">${type}${who ? ` · ${who}` : ''}</div>
+<div style="font-size:14px;color:#111;font-weight:600;">${type}</div>
 ${venue ? `<div style="font-size:12px;color:#777;margin-top:2px;">${venue}</div>` : ''}
+${address ? `<div style="font-size:12px;color:#999;margin-top:1px;">${address}</div>` : ''}
+<div style="font-size:11px;color:#bbb;margin-top:4px;text-align:right;">Reference: ${ref}</div>
 </td>
 </tr>`;
     }).join('');
