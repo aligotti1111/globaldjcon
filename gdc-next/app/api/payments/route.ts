@@ -842,7 +842,8 @@ ${payBlocks}
     const niceDate = b.event_date ? new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '';
     const subjTail = [shortDate, b.venue_name?.trim() || ''].filter(Boolean).join(' · ');
     const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Receipt — ${money(received, cur)}</h1>
-<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Your receipt for the ${kind === 'deposit' ? 'deposit' : 'payment'} is attached${niceDate ? ` for ${niceDate}` : ''}. Thanks!</p>`;
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Your receipt for the ${kind === 'deposit' ? 'deposit' : 'payment'} is attached${niceDate ? ` for ${niceDate}` : ''}. Thanks!</p>
+<p style="margin:18px 0 0;color:#bbb;font-size:11px;text-align:right;">Reference: ${referenceCode(bookingId, kind as 'deposit' | 'balance' | 'other')}</p>`;
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({
@@ -952,7 +953,8 @@ ${payBlocks}
     const shortDate = b.event_date ? new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
     const subjTail = [shortDate, b.venue_name?.trim() || ''].filter(Boolean).join(' · ');
     const content = `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Updated receipt — ${money(emailReceived, cur)}</h1>
-<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Here is an updated receipt for your ${kind === 'deposit' ? 'deposit' : 'payment'}${b.event_date ? ` for ${b.event_date}` : ''}. It replaces any earlier copy.</p>`;
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Here is an updated receipt for your ${kind === 'deposit' ? 'deposit' : 'payment'}${b.event_date ? ` for ${b.event_date}` : ''}. It replaces any earlier copy.</p>
+<p style="margin:18px 0 0;color:#bbb;font-size:11px;text-align:right;">Reference: ${referenceCode(bookingId, kind as 'deposit' | 'balance' | 'other')}</p>`;
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({
@@ -1171,7 +1173,8 @@ ${payBlocks}
 <p style="margin:0 0 18px;color:#333;font-size:15px;line-height:1.6;">An invoice for ${hrLabel} of overtime${b.event_date ? ` on ${b.event_date}` : ''} is attached. Pay it below, or on the night by any method your DJ accepts.</p>
 ${optionsBlock}`
       : `<h1 style="margin:0 0 10px;font-size:20px;color:#111;">Receipt — paid in full</h1>
-<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! Your receipt including ${hrLabel} of overtime${b.event_date ? ` on ${b.event_date}` : ''} is attached.</p>`;
+<p style="margin:0;color:#333;font-size:15px;line-height:1.6;">Thanks! Your receipt including ${hrLabel} of overtime${b.event_date ? ` on ${b.event_date}` : ''} is attached.</p>
+<p style="margin:18px 0 0;color:#bbb;font-size:11px;text-align:right;">Reference: ${referenceCode(bookingId, 'overtime')}</p>`;
 
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
