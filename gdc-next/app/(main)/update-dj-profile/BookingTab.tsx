@@ -165,6 +165,7 @@ export default function BookingTab({
   const window = bookingSettings.mob_booking_window || 24;
   const { confirm, confirmDialog } = useConfirm();
   const perDay = bookingSettings.mob_bookings_per_day || 1;
+  const partialFill = !!bookingSettings.mob_partial_fill;
   const deposit = bookingSettings.mob_deposit_pct || 0;
   const packages = bookingSettings.mob_packages || {};
 
@@ -552,6 +553,40 @@ export default function BookingTab({
                     ))}
                   </select>
                 </div>
+
+                {/* Partial-fill — only meaningful when more than one booking a
+                    day is allowed. When on, a day fills red proportionally to
+                    how many slots are taken (1 of 3 ≈ 1/3 red); off, a day shows
+                    no red until it's completely booked, then fully red. */}
+                {perDay > 1 && (
+                  <div className={styles.settingRow} style={{ paddingTop: '1.1rem', marginTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.06)' }}>
+                    <div className={styles.settingLabelWrap}>
+                      <div className={styles.settingLabel}>Show how full each day is</div>
+                      <div className={styles.settingHint}>
+                        Fills a day red in proportion to its bookings (e.g. 1 of {perDay} shows about a third red). Off: a day only turns red once it&rsquo;s fully booked.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={partialFill}
+                      aria-label="Show how full each day is"
+                      onClick={() => { setLastChangedField('settings'); patch({ mob_partial_fill: !partialFill }); }}
+                      style={{
+                        position: 'relative', width: 46, height: 26, borderRadius: 999,
+                        border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0,
+                        background: partialFill ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
+                        transition: 'background .15s ease',
+                      }}
+                    >
+                      <span style={{
+                        position: 'absolute', top: 3, left: partialFill ? 23 : 3,
+                        width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                        transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
+                      }} />
+                    </button>
+                  </div>
+                )}
 
                 {/* Currency — hidden for now (we only ship USD today) but the
                     full picker + wiring is kept below so we can re-enable it by
