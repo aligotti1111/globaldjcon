@@ -721,6 +721,64 @@ export default function ClubBookingTab({
                   </select>
                 </div>
 
+                {/* Fill-indicator — only meaningful when more than one booking
+                    a day is allowed. Shows a mini mockup of what it does. */}
+                {(bookingSettings.club_bookings_per_day ?? 1) > 1 && (
+                  <div className={styles.settingRow} style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--border, rgba(255,255,255,.08))', marginBottom: '1.25rem', alignItems: 'flex-start' }}>
+                    <div className={styles.settingLabelWrap}>
+                      <div className={styles.settingLabel}>Show how full each day is on your calendar</div>
+                      <div className={styles.settingHint}>
+                        You accept up to {bookingSettings.club_bookings_per_day} bookings a day. With this on, each day on your public
+                        calendar fills in red to show how many of those {bookingSettings.club_bookings_per_day} slots are taken — so visitors can see a
+                        day is partly booked, not just open or closed. With it off, a day stays clear until all{' '}
+                        {bookingSettings.club_bookings_per_day} slots are booked, then turns fully red.
+                      </div>
+                      {/* Mini mockup: three example days at 1, 2 and 3 of 3 booked. */}
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, marginTop: '.7rem' }}>
+                        {[
+                          { taken: 1, total: 3 },
+                          { taken: 2, total: 3 },
+                          { taken: 3, total: 3 },
+                        ].map((ex, i) => (
+                          <div key={i} style={{ textAlign: 'center' }}>
+                            <div style={{
+                              width: 38, height: 38, borderRadius: 6,
+                              border: '1px solid rgba(255,255,255,.18)',
+                              background: `linear-gradient(135deg, rgba(255,95,95,.45) 0%, rgba(255,95,95,.45) ${(ex.taken / ex.total) * 100}%, rgba(255,255,255,.04) ${(ex.taken / ex.total) * 100}%, rgba(255,255,255,.04) 100%)`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: '#fff', fontSize: '.78rem', fontWeight: 700,
+                            }}>
+                              {15 + i}
+                            </div>
+                            <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.62rem', marginTop: 4 }}>
+                              {ex.taken} of {ex.total}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={!!bookingSettings.club_partial_fill}
+                      aria-label="Show how full each day is on your calendar"
+                      onClick={() => { setLastChangedField('settings'); patch({ club_partial_fill: !bookingSettings.club_partial_fill }); }}
+                      style={{
+                        position: 'relative', width: 46, height: 26, borderRadius: 999,
+                        border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0, marginTop: 2,
+                        background: bookingSettings.club_partial_fill ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
+                        transition: 'background .15s ease',
+                      }}
+                    >
+                      <span style={{
+                        position: 'absolute', top: 3, left: bookingSettings.club_partial_fill ? 23 : 3,
+                        width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                        transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
+                      }} />
+                    </button>
+                  </div>
+                )}
+
                 <div className={styles.settingRow} style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--border, rgba(255,255,255,.08))', marginBottom: '1.25rem' }}>
                   <div className={styles.settingLabelWrap}>
                     <div className={styles.settingLabel}>Book In Advance</div>
