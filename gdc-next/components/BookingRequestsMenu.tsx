@@ -254,7 +254,7 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
                       flex: 1, padding: '8px 6px', borderRadius: 8, border: 'none', cursor: 'pointer',
                       background: activeTab ? 'linear-gradient(100deg,#22e3ad,#31d0ff)' : 'transparent',
                       color: activeTab ? '#04241b' : 'rgba(255,255,255,.6)',
-                      fontWeight: 700, fontSize: '.74rem', letterSpacing: '.02em',
+                      fontWeight: 700, fontSize: '.74rem', letterSpacing: '.02em', whiteSpace: 'nowrap',
                       boxShadow: activeTab ? '0 6px 16px -8px rgba(34,227,173,.8)' : 'none',
                       transition: 'background .15s, color .15s',
                     }}
