@@ -706,7 +706,7 @@ export default function MobilePublicCalendar({
             <div className={styles.legendItem}>
               <span
                 className={styles.legendDot}
-                style={{ background: 'rgba(255,95,95,.45)' }}
+                style={{ background: 'linear-gradient(135deg, rgba(255,95,95,.45) 0%, rgba(255,95,95,.45) 50%, transparent 50%, transparent 100%)', border: '1px solid rgba(255,95,95,.45)' }}
               />Partially booked
             </div>
           )}
@@ -1311,7 +1311,7 @@ function RollingMonthsView({
             <div className={styles.legendItem}>
               <span
                 className={styles.legendDot}
-                style={{ background: 'rgba(255,95,95,.45)' }}
+                style={{ background: 'linear-gradient(135deg, rgba(255,95,95,.45) 0%, rgba(255,95,95,.45) 50%, transparent 50%, transparent 100%)', border: '1px solid rgba(255,95,95,.45)' }}
               />Partially booked
             </div>
           )}
