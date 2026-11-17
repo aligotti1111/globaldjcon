@@ -156,6 +156,9 @@ export default function MobilePublicCalendar({
   // Pull values out of bookingSettings — same defaults as before
   const bookingWindowMonths = bookingSettings.mob_booking_window || 24;
   const defaultBookingsPerDay = bookingSettings.mob_bookings_per_day || 1;
+  // When on, a partly-booked day fills red in proportion to its taken slots
+  // (1 of 3 ≈ 1/3 red) instead of staying fully open until completely booked.
+  const partialFill = !!bookingSettings.mob_partial_fill;
 
   // Package price picture + currency for the owner day-editor's "See new prices"
   // preview. Computed once from the DJ's packages.
@@ -656,6 +659,7 @@ export default function MobilePublicCalendar({
           countByDate={countByDate}
           bookingWindowMonths={bookingWindowMonths}
           defaultBookingsPerDay={defaultBookingsPerDay}
+          partialFill={partialFill}
           selectedDate={selectedDate}
           onBookClick={handleBookClick}
           isOwnProfile={isOwnProfile}
@@ -677,6 +681,7 @@ export default function MobilePublicCalendar({
           countByDate={countByDate}
           bookingWindowMonths={bookingWindowMonths}
           defaultBookingsPerDay={defaultBookingsPerDay}
+          partialFill={partialFill}
           selectedDate={selectedDate}
           onBookClick={handleBookClick}
           isOwnProfile={isOwnProfile}
@@ -784,6 +789,7 @@ function SingleMonthView({
   countByDate,
   bookingWindowMonths,
   defaultBookingsPerDay,
+  partialFill,
   selectedDate,
   onBookClick,
   isOwnProfile,
@@ -802,6 +808,7 @@ function SingleMonthView({
   countByDate: Record<string, number>;
   bookingWindowMonths: number;
   defaultBookingsPerDay: number;
+  partialFill: boolean;
   selectedDate: string | null;
   readOnly?: boolean;
   onBookClick: (key: string, e: React.MouseEvent) => void;
@@ -863,6 +870,14 @@ function SingleMonthView({
     const isSelected = selectedDate === key;
     // Today is not bookable — requests must be for a future date.
     const isAvail = !isPast && !isToday && !isBeyond && !isBooked && !isUnavail && !isFull;
+    // Partial-fill (owner opted in): a still-open day with some bookings fills
+    // red from the bottom in proportion to how many of its slots are taken.
+    const partialFrac = partialFill && isAvail && approvedCount > 0 && defaultBookingsPerDay > 0
+      ? Math.min(1, approvedCount / defaultBookingsPerDay)
+      : 0;
+    const partialStyle: React.CSSProperties = partialFrac > 0
+      ? { background: `linear-gradient(to top, rgba(255,95,95,0.5) ${Math.round(partialFrac * 100)}%, transparent ${Math.round(partialFrac * 100)}%)` }
+      : {};
     const isLastRow =
       Math.floor((firstDay + d - 1) / 7) ===
       Math.floor((firstDay + daysInMonth - 1) / 7);
@@ -1014,7 +1029,7 @@ function SingleMonthView({
         key={key}
         className={cellClasses.join(' ')}
         onClick={cellClickHandler}
-        style={cellClickHandler ? { cursor: 'pointer' } : undefined}
+        style={{ ...partialStyle, ...(cellClickHandler ? { cursor: 'pointer' } : {}) }}
       >
         <div className={numClasses.join(' ')}>{d}</div>
         {inner}
@@ -1084,6 +1099,7 @@ function RollingMonthsView({
   countByDate,
   bookingWindowMonths,
   defaultBookingsPerDay,
+  partialFill,
   selectedDate,
   onBookClick,
   isOwnProfile,
@@ -1097,6 +1113,7 @@ function RollingMonthsView({
   countByDate: Record<string, number>;
   bookingWindowMonths: number;
   defaultBookingsPerDay: number;
+  partialFill: boolean;
   selectedDate: string | null;
   readOnly?: boolean;
   onBookClick: (key: string, e: React.MouseEvent) => void;
@@ -1163,11 +1180,19 @@ function RollingMonthsView({
       if (isClickable) cellClasses.push(styles.miniCellPointer);
 
       const miniManualBooked = isOwnProfile && isBooked && dayData.bookings_available == null && !dayData.eventName;
+      // Partial-fill (owner opted in): proportional red on a still-open day.
+      const miniPartialFrac = partialFill && isAvail && approvedCount > 0 && defaultBookingsPerDay > 0
+        ? Math.min(1, approvedCount / defaultBookingsPerDay)
+        : 0;
+      const miniPartialStyle: React.CSSProperties = miniPartialFrac > 0
+        ? { background: `linear-gradient(to top, rgba(255,95,95,0.5) ${Math.round(miniPartialFrac * 100)}%, transparent ${Math.round(miniPartialFrac * 100)}%)` }
+        : {};
       cells.push(
         <div
           key={key}
           className={cellClasses.join(' ')}
           onClick={onCellClick}
+          style={miniPartialFrac > 0 ? miniPartialStyle : undefined}
           title={miniManualBooked ? 'Manually marked booked' : undefined}
         >
           {d}
