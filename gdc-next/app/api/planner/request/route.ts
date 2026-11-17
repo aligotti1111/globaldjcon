@@ -497,7 +497,7 @@ This link is private to your booking — anyone with it can see and edit your pl
           // "<event date> <event type> Planner & Playlist" — a resend prefixes
           // "Reminder:", a test prefixes "[TEST]". Subject date omits the
           // weekday (kept in the body banner) to stay short.
-          subject: `${isTest ? '[TEST] ' : ''}${isResend ? 'Reminder: ' : ''}${b.event_date ? `${new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} ` : ''}${eventTypeLabel} Planner & Playlist`,
+          subject: `${isTest ? '[TEST] ' : ''}${isResend ? 'Reminder: ' : ''}${eventTypeLabel} Planner & Playlist${b.event_date ? ` — ${new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}`,
           html: shell(content),
         });
       } catch {
@@ -614,7 +614,7 @@ If this is a surprise, or you'd started filling it in, just reply to ${esc(djNam
         await resend.emails.send({
           from: FROM,
           to,
-          subject: `${b.event_date ? `${new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} ` : ''}${eventTypeLabel} Planner & Playlist — cancelled`,
+          subject: `${eventTypeLabel} Planner & Playlist — cancelled${b.event_date ? ` — ${new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}`,
           html: shell(content),
         });
         emailed = true;
