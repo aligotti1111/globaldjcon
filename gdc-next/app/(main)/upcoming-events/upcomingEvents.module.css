@@ -103,9 +103,9 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 12px 16px;
+  padding: 20px 16px;
   position: relative;
-  min-height: 72px;
+  min-height: 88px;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
