@@ -872,19 +872,23 @@ function SingleMonthView({
       year === today.getFullYear() &&
       month === today.getMonth() &&
       d === today.getDate();
-    const unavailManual = !!dayData.unavailable;
     const approvedCount = countByDate[key] || 0;
-    // Whole-cell RED ("booked/closed"): the approved bookings reach the
-    // company-wide max per day, the owner marked the day booked, or the owner
-    // marked it unavailable AND it has a real booking behind it. An EMPTY day the
-    // owner marked unavailable keeps the grey "unavailable" design.
+    const hasRealBooking = approvedCount > 0;
+    // An `unavailable` flag only applies to a day with NO booking. The owner's
+    // intentional "close a day that has a booking" sets the `booked` flag
+    // instead (see quickMark), so an `unavailable` flag sitting on a day that
+    // has a booking is always stale (e.g. marked while the request was still
+    // pending) — it must NOT force the day fully red. A day with a booking is
+    // booked (at capacity) or partially booked (under capacity), never grey.
+    const unavailManual = !!dayData.unavailable && !hasRealBooking;
+    // Whole-cell RED ("booked/closed"): approved bookings reach the per-day max,
+    // or the owner explicitly force-closed the day. A booking under the max
+    // shows partial, not full.
     const isBooked =
-      approvedCount >= defaultBookingsPerDay
-      || !!dayData.booked
-      || (unavailManual && approvedCount > 0);
-    // Hold the grey "unavailable" look until counts load — a flagged day may
-    // actually have a booking (= booked, not unavailable), and grey-then-red is
-    // a jarring flash. Until then it renders neutral rather than grey.
+      (hasRealBooking && approvedCount >= defaultBookingsPerDay)
+      || !!dayData.booked;
+    // Hold the grey "unavailable" look until counts load — until then we don't
+    // know if the day has a booking (which would make it booked, not grey).
     const isUnavail = unavailManual && !isBooked && countsLoaded;
     const bookingsLeft = Math.max(0, defaultBookingsPerDay - approvedCount);
     const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
@@ -1182,18 +1186,18 @@ function RollingMonthsView({
       const key = dateKey(yr, mo, d);
       const dayData: MobileDayData = bookingDays[key] || {};
       const isPast = key < todayKey;
-      const unavailManual = !!dayData.unavailable;
       const approvedCount = countByDate[key] || 0;
-      // Whole-cell RED when at capacity, manually booked, or manually unavailable
-      // WITH a booking behind it. An empty unavailable day keeps the grey design.
+      const hasRealBooking = approvedCount > 0;
+      // An `unavailable` flag only applies to a day with NO booking — a stale
+      // flag on a booked day must not force it red (see the single-month view).
+      const unavailManual = !!dayData.unavailable && !hasRealBooking;
+      // Whole-cell RED: at the per-day max, or an explicit owner force-close.
+      // A booking under the max shows partial, not full.
       const isBooked =
-        approvedCount >= defaultBookingsPerDay
-        || !!dayData.booked
-        || (unavailManual && approvedCount > 0);
-      // Hold the grey "unavailable" look until counts load — a flagged day may
-    // actually have a booking (= booked, not unavailable), and grey-then-red is
-    // a jarring flash. Until then it renders neutral rather than grey.
-    const isUnavail = unavailManual && !isBooked && countsLoaded;
+        (hasRealBooking && approvedCount >= defaultBookingsPerDay)
+        || !!dayData.booked;
+      // Hold the grey "unavailable" look until counts load.
+      const isUnavail = unavailManual && !isBooked && countsLoaded;
       const bookingsLeft = Math.max(0, defaultBookingsPerDay - approvedCount);
       const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
       const isToday = key === todayKey;
