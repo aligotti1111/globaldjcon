@@ -18,6 +18,7 @@ import { getActingContext, canSendContracts } from '@/lib/acting';
 import { getDocuseal } from '@/lib/docuseal';
 import { notifyBookingSms } from '@/lib/supabase/sms';
 import { logActivity } from '@/lib/activityLog';
+import { referenceCode } from '@/lib/paymentMethods';
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -150,6 +151,7 @@ export async function POST(req: Request) {
         <p style="color:#666;margin-bottom:16px;">Hi ${escHtml(greetingName)}, ${escHtml(djName)} has prepared your contract${where ? ` for <strong>${escHtml(where)}</strong>` : ''} and signed their part. Please review and add your signature below.</p>
         <div style="margin:24px 0;">${ctaButton(signUrl, 'Review & Sign')}</div>
         <p style="color:#999;font-size:12px;line-height:1.6;">If the button doesn't work, copy and paste this link:<br><a href="${signUrl}" style="color:#0a6f61;">${signUrl}</a></p>
+        <p style="color:#bbb;font-size:11px;line-height:1.6;text-align:right;margin-top:18px;">Reference: ${escHtml(referenceCode(bookingId, 'other'))}</p>
       `),
     } as unknown as Parameters<typeof resend.emails.send>[0]);
   } catch (e) {
