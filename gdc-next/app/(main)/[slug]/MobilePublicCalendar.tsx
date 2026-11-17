@@ -702,6 +702,14 @@ export default function MobilePublicCalendar({
           <div className={`${styles.legendItem} ${styles.legendBooked}`}>
             <span className={styles.legendDot} />Booked
           </div>
+          {partialFill && (
+            <div className={styles.legendItem}>
+              <span
+                className={styles.legendDot}
+                style={{ background: 'rgba(255,95,95,.45)' }}
+              />Partially booked
+            </div>
+          )}
           <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
             <span className={styles.legendDot} />Unavailable
           </div>
@@ -1299,6 +1307,14 @@ function RollingMonthsView({
           <div className={`${styles.legendItem} ${styles.legendBooked}`}>
             <span className={styles.legendDot} />Booked
           </div>
+          {partialFill && (
+            <div className={styles.legendItem}>
+              <span
+                className={styles.legendDot}
+                style={{ background: 'rgba(255,95,95,.45)' }}
+              />Partially booked
+            </div>
+          )}
           <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
             <span className={styles.legendDot} />Unavailable
           </div>
