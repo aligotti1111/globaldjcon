@@ -28,7 +28,9 @@ function monthWindow(now: Date): { start: string; end: string } {
 
 export interface ContractUsage {
   quota: number;        // slots this cycle for the DJ's tier (0 = free/lapsed)
-  used: number;         // slots occupied by OTHER bookings this cycle
+  used: number;         // slots counted this cycle (derived + admin adjustment)
+  rawUsed: number;      // slots derived purely from signed bookings this cycle
+  adjustment: number;   // admin override added to rawUsed (users.contract_usage_adjustment)
   remaining: number;    // max(0, quota - used)
   atLimit: boolean;     // true when there's no room for a new contract
   cycleStart: string;
@@ -67,11 +69,26 @@ export async function getContractUsage(
   if (opts.excludeBookingId) q = q.neq('id', opts.excludeBookingId);
 
   const { count } = await q;
-  const used = count ?? 0;
+  const rawUsed = count ?? 0;
+
+  // Admin override: a flat integer added to the derived count so an admin can
+  // correct the displayed "used" (see supabase_contract_usage_adjustment.sql).
+  // Read it alongside — a missing column / row just means no adjustment.
+  let adjustment = 0;
+  try {
+    const { data: adjRow } = await admin
+      .from('users')
+      .select('contract_usage_adjustment')
+      .eq('id', djId)
+      .maybeSingle<{ contract_usage_adjustment: number | null }>();
+    adjustment = Math.trunc(Number(adjRow?.contract_usage_adjustment ?? 0)) || 0;
+  } catch { adjustment = 0; }
+
+  const used = Math.max(0, rawUsed + adjustment);
   const remaining = Math.max(0, quota - used);
-  // No room when the quota is already filled by other bookings. A zero quota
-  // (free/lapsed) is always at-limit — but canUsePro() blocks those first.
+  // No room when the quota is already filled. A zero quota (free/lapsed) is
+  // always at-limit — but canUsePro() blocks those first.
   const atLimit = used >= quota;
 
-  return { quota, used, remaining, atLimit, cycleStart, cycleEnd };
+  return { quota, used, rawUsed, adjustment, remaining, atLimit, cycleStart, cycleEnd };
 }
