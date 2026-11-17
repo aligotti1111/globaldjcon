@@ -111,8 +111,8 @@ interface Props {
 
 // Pad a number to 2 digits with leading zero
 // pad2 / dateKey / calcMaxYM / calcMinYM / isInRange are imported from
-// ./calendarRange (shared with MobilePublicCalendar). Desktop uses the
-// default 12-month fallback.
+// ./calendarRange (shared with the Mobile DJ calendar). This Club/Bar DJ
+// calendar uses the default 12-month fallback window.
 
 // ──────────────────────────────────────────────────────────────────────────
 // Main component
@@ -546,6 +546,7 @@ export default function PublicCalendar({
           bookingDays={bookingDays}
           countByDate={countByDate}
           globalCapacity={Math.min(3, Math.max(1, bookingSettings?.club_bookings_per_day ?? 1))}
+          partialFill={!!bookingSettings?.club_partial_fill}
           selectedDate={selectedDate}
           onBookClick={handleBookClick}
           onBookedCellClick={handleBookedCellClick}
@@ -581,6 +582,7 @@ export default function PublicCalendar({
           bookingDays={bookingDays}
           countByDate={countByDate}
           globalCapacity={Math.min(3, Math.max(1, bookingSettings?.club_bookings_per_day ?? 1))}
+          partialFill={!!bookingSettings?.club_partial_fill}
           bookingWindowMonths={bookingWindowMonths}
           selectedDate={selectedDate}
           isLoggedIn={isLoggedIn}
@@ -631,6 +633,7 @@ function SingleMonthView({
   bookingDays,
   countByDate,
   globalCapacity,
+  partialFill,
   selectedDate,
   onBookClick,
   onBookedCellClick,
@@ -649,6 +652,7 @@ function SingleMonthView({
   bookingDays: BookingDays;
   countByDate: Record<string, number>;
   globalCapacity: number;
+  partialFill: boolean;
   selectedDate: string | null;
   readOnly?: boolean;
   onBookClick: (key: string, e: React.MouseEvent) => void;
@@ -705,7 +709,7 @@ function SingleMonthView({
     // booked date to new bookings" from the ✕ control.
     const isForcedBooked = !!dayData.booked;
     const isFull = isForcedBooked || (bookedCount >= dayCap && bookedCount > 0);
-    const isPartial = !isForcedBooked && bookedCount > 0 && bookedCount < dayCap;
+    const isPartial = partialFill && !isForcedBooked && bookedCount > 0 && bookedCount < dayCap;
     const isBooked = isFull; // "booked" cell styling = fully booked only
     const fillFraction = dayCap > 0 ? Math.min(1, bookedCount / dayCap) : 0;
     const isUnavail = !!dayData.unavailable;
@@ -964,7 +968,7 @@ function SingleMonthView({
     // remains, fill that fraction of the cell red along a 135° diagonal.
     const cellStyle: React.CSSProperties | undefined = isPartial
       ? {
-          background: `linear-gradient(135deg, #ff5f5f 0%, #ff5f5f ${Math.round(fillFraction * 100)}%, transparent ${Math.round(fillFraction * 100)}%, transparent 100%)`,
+          background: `linear-gradient(135deg, rgba(255,95,95,.45) 0%, rgba(255,95,95,.45) ${Math.round(fillFraction * 100)}%, transparent ${Math.round(fillFraction * 100)}%, transparent 100%)`,
         }
       : undefined;
     // Pointer cursor whenever the whole cell is clickable (open or booked
@@ -1032,10 +1036,10 @@ function SingleMonthView({
           <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
             <span className={styles.legendDot} />Unavailable
           </div>
-          {globalCapacity > 1 && (
+          {partialFill && globalCapacity > 1 && (
             <div className={`${styles.legendItem} ${styles.legendPartial}`}>
               <span className={styles.legendDot} />
-              Accepting set times around current booking
+              Partially booked
             </div>
           )}
         </div>
@@ -1068,6 +1072,7 @@ function RollingMonthsView({
   bookingDays,
   countByDate,
   globalCapacity,
+  partialFill,
   bookingWindowMonths,
   selectedDate,
   isLoggedIn,
@@ -1082,6 +1087,7 @@ function RollingMonthsView({
   bookingDays: BookingDays;
   countByDate: Record<string, number>;
   globalCapacity: number;
+  partialFill: boolean;
   bookingWindowMonths: number;
   selectedDate: string | null;
   isLoggedIn: boolean;
@@ -1120,7 +1126,7 @@ function RollingMonthsView({
       const bookedCount = rawCount > 0 ? rawCount : (dayData.booked ? 1 : 0);
       const isForcedBooked = !!dayData.booked;
       const isFull = isForcedBooked || (bookedCount >= dayCap && bookedCount > 0);
-      const isPartial = !isForcedBooked && bookedCount > 0 && bookedCount < dayCap;
+      const isPartial = partialFill && !isForcedBooked && bookedCount > 0 && bookedCount < dayCap;
       const isBooked = isFull;
       const fillFraction = dayCap > 0 ? Math.min(1, bookedCount / dayCap) : 0;
       const isUnavail = !!dayData.unavailable;
@@ -1156,7 +1162,7 @@ function RollingMonthsView({
 
       const miniCellStyle: React.CSSProperties | undefined = isPartial
         ? {
-            background: `linear-gradient(135deg, #ff5f5f 0%, #ff5f5f ${Math.round(fillFraction * 100)}%, transparent ${Math.round(fillFraction * 100)}%, transparent 100%)`,
+            background: `linear-gradient(135deg, rgba(255,95,95,.45) 0%, rgba(255,95,95,.45) ${Math.round(fillFraction * 100)}%, transparent ${Math.round(fillFraction * 100)}%, transparent 100%)`,
           }
         : undefined;
 
@@ -1260,10 +1266,10 @@ function RollingMonthsView({
           <div className={`${styles.legendItem} ${styles.legendUnavail}`}>
             <span className={styles.legendDot} />Unavailable
           </div>
-          {globalCapacity > 1 && (
+          {partialFill && globalCapacity > 1 && (
             <div className={`${styles.legendItem} ${styles.legendPartial}`}>
               <span className={styles.legendDot} />
-              Accepting set times around current booking
+              Partially booked
             </div>
           )}
         </div>
