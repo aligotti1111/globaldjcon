@@ -711,19 +711,13 @@ export default function BookingTab({
                         ].map((ex, i) => (
                           <div key={i} style={{ textAlign: 'center' }}>
                             <div style={{
-                              position: 'relative',
-                              width: 38, height: 38, borderRadius: 6, overflow: 'hidden',
+                              width: 38, height: 38, borderRadius: 6,
                               border: '1px solid rgba(255,255,255,.18)',
-                              background: 'rgba(255,255,255,.04)',
+                              background: `linear-gradient(135deg, #ff5f5f 0%, #ff5f5f ${(ex.taken / ex.total) * 100}%, rgba(255,255,255,.04) ${(ex.taken / ex.total) * 100}%, rgba(255,255,255,.04) 100%)`,
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               color: '#fff', fontSize: '.78rem', fontWeight: 700,
                             }}>
-                              <div style={{
-                                position: 'absolute', inset: 0, pointerEvents: 'none',
-                                background: `rgba(255,95,95,${(0.3 + 0.35 * (ex.taken / ex.total)).toFixed(2)})`,
-                                clipPath: 'polygon(0 0, 100% 0, 0 100%)',
-                              }} />
-                              <span style={{ position: 'relative' }}>{15 + i}</span>
+                              {15 + i}
                             </div>
                             <div style={{ color: 'var(--muted,#8a8aa0)', fontSize: '.62rem', marginTop: 4 }}>
                               {ex.taken} of {ex.total}
