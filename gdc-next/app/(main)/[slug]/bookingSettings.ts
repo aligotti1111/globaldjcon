@@ -134,6 +134,9 @@ export interface BookingSettings {
   // single date (1–3, default 1). A specific date can override this via
   // the per-day calendar editor (DayData.day_capacity).
   club_bookings_per_day?: number;
+  // When true, days with some (but not all) capacity booked show a
+  // proportional diagonal red fill on the public calendar. Default off.
+  club_partial_fill?: boolean;
 
   // ── Discounts (both DJ types) ────────────────────────────────
   // Promo codes: DJ-created, entered by the client at booking. Sale: a
