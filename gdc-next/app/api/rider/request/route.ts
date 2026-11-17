@@ -1,24 +1,43 @@
-// POST /api/rider/request — deploy a booking's DJ rider to the host.
-// Saves the rider (mode + items + pdf url), marks it 'sent', and emails the
-// host the on-site rider link WITH THE RIDER AS A PDF ATTACHMENT:
-//   · custom mode — a branded PDF is generated from the fields (lib/riderPdf).
-//   · upload mode — the DJ's uploaded PDF (rider_pdf_url) is fetched + attached.
-// The on-site /rider/[id] link keeps working in both modes.
-// Session required; booking must belong to the DJ.
+// POST /api/planner/request
+//
+// The DJ's half of the Playlist & Planner. Creates the planner for a booking
+// and emails the client the link. This is the route the "Request planner"
+// action on the Upcoming Bookings row calls.
+//
+// PATH NOTE: this sits next to /api/planner/[id]. Next resolves STATIC segments
+// before dynamic ones, so /api/planner/request always lands here and never in
+// [id] — and [id] rejects anything that isn't a uuid anyway, so even if that
+// order ever changed the failure would be a 404, not a wrong write.
+//
+// THE TWO SIDES ARE DIFFERENT AND THAT'S THE POINT:
+//   /api/planner/[id]      — no session. The client. The uuid is the credential.
+//   /api/planner/request   — session required. The DJ. Ownership is checked.
+//
+// CLOUDFLARE EATS 502s — an origin 502 has its body replaced with Cloudflare's
+// HTML and the caller's .json() throws on it. 500 passes through. Never 502.
+// (/api/payments still returns 502 on insert failure. It's wrong there too.)
 
 import { NextResponse } from 'next/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, resolveUserEmail, resolveUserName } from '@/lib/supabase/admin';
 import { getActingContext } from '@/lib/acting';
 import { logActivity } from '@/lib/activityLog';
-import { createAdminClient, resolveUserEmail, resolveUserName } from '@/lib/supabase/admin';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { canUsePro, type AccessFields } from '@/lib/access';
+import { referenceCode } from '@/lib/paymentMethods';
+import { mobEventLabel, parseCustomEventTypes } from '@/lib/constants';
+import type { UpcomingBooking } from '@/app/(main)/upcoming-bookings/page';
 import {
-  normalizeRiderItems, normalizeRiderMode, groupRiderBoxes, riderLine, riderHasFields,
-  normalizeNamedRiders, upsertNamedRider, newRiderId, sectionAllowsAttachment,
-  RIDER_ATTACHMENT_MAX_BYTES, type NamedRider,
-} from '@/lib/rider';
-import { buildRiderPdf } from '@/lib/riderPdf';
+  pickTemplate,
+  composeFields,
+  applyPrefill,
+  isCustomEventType,
+  dropFieldsAnsweredByBooking,
+  type PlannerTemplate,
+  type PlannerField,
+  type PlannerResponses,
+} from '@/lib/planner';
 
 export const runtime = 'nodejs';
 export const maxDuration = 20;
@@ -26,51 +45,56 @@ export const maxDuration = 20;
 const FROM = 'Global DJ Connect <info@globaldjconnect.com>';
 const SITE_URL = 'https://globaldjconnect.com';
 
-const esc = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+interface BookingRow {
+  id: string;
+  dj_id: string | null;
+  requester_id: string | null;
+  host_email: string | null;
+  requester_name: string | null;
+  is_manual: boolean | null;
+  booking_type: string | null;
+  event_type: string | null;
+  event_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  venue_name: string | null;
+  venue_address: string | null;
+  guest_count: number | null;
+  cocktail_needed: boolean | null;
+  cocktail_start_time: string | null;
+  ceremony_needed: boolean | null;
+  ceremony_start_time: string | null;
+  package_title: string | null;
+}
+
+interface PlannerRow {
+  id: string;
+  fields: PlannerField[];
+  responses: PlannerResponses;
+  status: string;
+}
+
+const BOOKING_COLS =
+  'id, dj_id, requester_id, host_email, requester_name, is_manual, booking_type, ' +
+  'event_type, event_date, start_time, end_time, venue_name, venue_address, ' +
+  'guest_count, cocktail_needed, cocktail_start_time, ceremony_needed, ceremony_start_time, package_title';
+
+async function clientEmailFor(b: BookingRow): Promise<string | null> {
+  if (b.host_email) return b.host_email;
+  if (b.requester_id) return await resolveUserEmail(b.requester_id);
+  return null;
+}
 
 function fmtDate(d: string | null): string {
   if (!d) return 'your event';
+  // T12:00:00 — `new Date('2026-07-25')` is UTC midnight and renders as the
+  // 24th in every US timezone.
   return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
   });
 }
-function fmtTime(t: string | null): string {
-  if (!t) return '';
-  const [h, m] = t.split(':'); const hn = Number(h);
-  if (!Number.isFinite(hn)) return '';
-  const ap = hn >= 12 ? 'PM' : 'AM'; const h12 = hn % 12 === 0 ? 12 : hn % 12;
-  return `${h12}:${m || '00'} ${ap}`;
-}
 
-/** Fetch a logo/PDF URL into bytes. Returns null on any failure. */
-async function fetchBytes(url?: string | null): Promise<Uint8Array | null> {
-  if (!url) return null;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    if (bytes.length === 0 || bytes.length > 15_000_000) return null;
-    return bytes;
-  } catch {
-    return null;
-  }
-}
-
-/** Logo bytes typed for pdf-lib — PNG/JPG only. */
-async function fetchLogo(url?: string | null): Promise<{ bytes: Uint8Array; type: 'png' | 'jpg' } | null> {
-  if (!url) return null;
-  const lower = url.toLowerCase();
-  const type: 'png' | 'jpg' | null =
-    lower.includes('.png') ? 'png'
-    : /\.jpe?g(\?|$)/.test(lower) ? 'jpg'
-    : null;
-  if (!type) return null;
-  const bytes = await fetchBytes(url);
-  if (!bytes || bytes.length > 3_000_000) return null;
-  return { bytes, type };
-}
-
+/** Cosmetic shell — same one /api/payments uses. */
 function shell(content: string): string {
   return `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
@@ -86,21 +110,9 @@ function shell(content: string): string {
 </td></tr></table>`;
 }
 
-interface BookingRow {
-  id: string; dj_id: string | null; requester_id: string | null;
-  host_email: string | null; requester_name: string | null;
-  event_date: string | null; start_time: string | null; end_time: string | null;
-  venue_name: string | null; venue_address: string | null; venue_type: string | null;
-}
-
-const EVENT_LABEL: Record<string, string> = {
-  weddings: 'Wedding', wedding: 'Wedding', corporate: 'Corporate Event',
-  birthday: 'Birthday Party', anniversary: 'Anniversary',
-};
-function eventLabel(t?: string | null): string {
-  if (!t) return '';
-  return EVENT_LABEL[t] || t.split(/[_\s]+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-}
+/** Minimal escape — a venue called "Smith & Sons <Hall>" must not break the HTML. */
+const esc = (s: string): string =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 export async function POST(req: Request) {
   try {
@@ -109,197 +121,508 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     const acting = await getActingContext(user.id);
 
-    let body: { bookingId?: unknown; items?: unknown; mode?: unknown; pdfUrl?: unknown; name?: unknown; test?: unknown };
-    try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
-    const bookingId = typeof body.bookingId === 'string' ? body.bookingId : '';
-    if (!bookingId) return NextResponse.json({ error: 'Missing booking.' }, { status: 400 });
-
-    const mode = normalizeRiderMode(body.mode);
-    const items = normalizeRiderItems(body.items);
-    const pdfUrl = typeof body.pdfUrl === 'string' && body.pdfUrl ? body.pdfUrl : null;
-    const riderName = typeof body.name === 'string' ? body.name.trim() : '';
-
-    if (mode === 'upload') {
-      if (!pdfUrl) return NextResponse.json({ error: 'Upload a rider PDF before sending.' }, { status: 400 });
-    } else if (!riderHasFields(items)) {
-      return NextResponse.json({ error: 'Add at least one rider field before sending.' }, { status: 400 });
+    let body: Record<string, unknown>;
+    try { body = await req.json(); } catch {
+      return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
     }
-
-    const admin = createAdminClient() as unknown as SupabaseClient;
-    const { data: bData } = await admin
-      .from('bookings')
-      .select('id, dj_id, requester_id, host_email, requester_name, event_date, start_time, end_time, venue_name, venue_address, venue_type')
-      .eq('id', bookingId).maybeSingle();
-    const b = bData as unknown as BookingRow | null;
-    if (!b || b.dj_id !== acting.djId) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
-
-    // DJ name + logo for the email and the generated PDF.
-    const { data: djData } = await admin.from('users').select('name, contract_logo_url').eq('id', acting.djId).maybeSingle();
-    const dj = djData as unknown as { name?: string | null; contract_logo_url?: string | null } | null;
-    const djName = dj?.name || 'Your DJ';
+    const bookingId = typeof body.bookingId === 'string' ? body.bookingId : '';
+    if (!bookingId) return NextResponse.json({ error: 'Missing bookingId' }, { status: 400 });
+    // TEST: preview email goes to whoever is signed in (owner, or a teammate at
+    // THEIR own email). Never marks the planner sent, never emails the client.
     const isTest = body.test === true;
 
-    // Persist. A real send marks the rider 'sent'; a test only needs a valid
-    // /rider/[id] link, so it reuses the existing row (or makes a draft) and
-    // never flips status or touches the library.
-    let id: string;
-    if (isTest) {
-      const { data: ex } = await admin.from('booking_riders').select('id').eq('booking_id', bookingId).maybeSingle();
-      if (ex) {
-        id = (ex as unknown as { id: string }).id;
-      } else {
-        const { data: ins, error: insErr } = await admin
-          .from('booking_riders')
-          .insert({
-            booking_id: bookingId, dj_id: acting.djId, items,
-            rider_mode: mode, rider_pdf_url: pdfUrl, rider_name: riderName || null,
-            status: 'draft', updated_at: new Date().toISOString(),
-          } as unknown as never)
-          .select('id')
-          .single();
-        if (insErr || !ins) return NextResponse.json({ error: 'Could not prepare the test.' }, { status: 500 });
-        id = (ins as unknown as { id: string }).id;
-      }
-    } else {
-      const { data: up, error } = await admin
-        .from('booking_riders')
-        .upsert({
-          booking_id: bookingId, dj_id: acting.djId, items,
-          rider_mode: mode, rider_pdf_url: pdfUrl, rider_name: riderName || null,
-          status: 'sent', sent_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-        } as unknown as never, { onConflict: 'booking_id' })
-        .select('id')
-        .single();
-      if (error || !up) return NextResponse.json({ error: 'Could not save the rider.' }, { status: 500 });
-      id = (up as unknown as { id: string }).id;
-      // Log the send now (the rider is saved); the email below is best-effort.
-      await logActivity(acting, { action: 'rider.sent', summary: 'Sent a rider to the host', bookingId });
-    }
-    const url = `${SITE_URL}/rider/${id}`;
+    const admin = createAdminClient();
+    // booking_planners / planners postdate the generated types/supabase.ts, so
+    // the typed client rejects .from() on them outright. One cast for the new
+    // tables — same house pattern as /api/payments and /pay/[id].
+    const db = admin as unknown as SupabaseClient;
 
-    // Sending a NAMED rider also files it in the DJ's reusable library, so it's
-    // there for one-click quick-send on the next booking. Never blocks the send.
-    if (!isTest && riderName) {
-      try {
-        const { data: uRow } = await admin.from('users').select('booking_settings').eq('id', acting.djId).maybeSingle();
-        const bsRaw = (uRow as unknown as { booking_settings?: unknown } | null)?.booking_settings;
-        let settings: Record<string, unknown> = {};
-        if (typeof bsRaw === 'string') { try { settings = JSON.parse(bsRaw) as Record<string, unknown>; } catch { settings = {}; } }
-        else if (bsRaw && typeof bsRaw === 'object') { settings = bsRaw as Record<string, unknown>; }
-        const named: NamedRider = { id: newRiderId(), name: riderName, mode, items, pdfUrl, updatedAt: new Date().toISOString() };
-        settings.riders = upsertNamedRider(normalizeNamedRiders(settings.riders), named);
-        // booking_settings is STRINGIFIED JSON everywhere else — stringify to
-        // avoid corrupting the blob (which wiped equipment/rates).
-        await admin.from('users').update({ booking_settings: JSON.stringify(settings) } as unknown as never).eq('id', acting.djId);
-      } catch { /* library is a convenience — the send already succeeded */ }
-    }
+    const { data: bData } = await admin
+      .from('bookings')
+      .select(BOOKING_COLS)
+      .eq('id', bookingId)
+      .maybeSingle();
+    const b = bData as unknown as BookingRow | null;
+    if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
+    if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
 
-    // ── Build the attachments (never throws — the email still sends without them) ──
-    // attachments[0] is the rider itself (uploaded PDF or generated PDF); any
-    // Technical/Visuals box files ride along EVERY time the rider is sent.
-    const attachments: { filename: string; content: string }[] = [];
-    try {
-      if (mode === 'upload') {
-        const bytes = await fetchBytes(pdfUrl);
-        if (bytes) attachments.push({ filename: `DJ-Rider-${djName.replace(/[^a-z0-9]+/gi, '-')}.pdf`, content: Buffer.from(bytes).toString('base64') });
-      } else {
-        const when = fmtDate(b.event_date);
-        const timeText = [fmtTime(b.start_time), fmtTime(b.end_time)].filter(Boolean).join(' – ');
-        const logo = await fetchLogo(dj?.contract_logo_url);
-        const pdfBytes = await buildRiderPdf({
-          djName,
-          logo,
-          eventType: eventLabel(b.venue_type),
-          dateText: b.event_date ? when : null,
-          timeText: timeText || null,
-          venueName: b.venue_name,
-          venueAddress: b.venue_address,
-          items,
-        });
-        attachments.push({ filename: `DJ-Rider-${djName.replace(/[^a-z0-9]+/gi, '-')}.pdf`, content: Buffer.from(pdfBytes).toString('base64') });
-      }
-    } catch {
-      // A failed rider PDF must not block the box attachments below.
-    }
-
-    // Technical + Visuals box attachments — fetched fresh each send so the host
-    // always gets the current file. Any single file >5MB is skipped defensively.
-    const usedNames = new Set(attachments.map((a) => a.filename.toLowerCase()));
-    try {
-      const attBoxes = groupRiderBoxes(items).filter(
-        (bx) => !bx.disabled && bx.attachmentUrl && sectionAllowsAttachment(bx.section),
+    // Mobile only, on purpose. A club booking has no first dance, no bridal
+    // party and no run of show — sending one a wedding planner is worse than
+    // sending nothing. Club gets its own system (spec, §1).
+    if (b.booking_type === 'club') {
+      return NextResponse.json(
+        { error: 'Planners are for mobile bookings.' }, { status: 400 },
       );
-      for (const bx of attBoxes) {
-        const bytes = await fetchBytes(bx.attachmentUrl);
-        if (!bytes || bytes.length > RIDER_ATTACHMENT_MAX_BYTES) continue;
-        // Keep the DJ's original filename; de-dupe collisions so both survive.
-        let filename = (bx.attachmentName || `${bx.section}-attachment`).replace(/[\\/:*?"<>|]+/g, '-');
-        if (usedNames.has(filename.toLowerCase())) filename = `${bx.section}-${filename}`;
-        usedNames.add(filename.toLowerCase());
-        attachments.push({ filename, content: Buffer.from(bytes).toString('base64') });
-      }
-    } catch {
-      // Box attachments are best-effort — never sink the send.
     }
 
-    // ── Recipient ── a TEST goes to whoever is signed in (so a teammate gets it
-    // at THEIR own email), a real send goes to the host.
+    // The host gate. Mirrors the deposit exactly: a manual booking the DJ typed
+    // in themselves may have no client attached at all, and there is nobody to
+    // send this to. The NAME matters as much as the address — the email opens
+    // "Hi {name}", and with no name the client gets "Hi jordan91".
+    //
+    // The UI shows the icon and explains this in the dropdown rather than
+    // hiding the action; this check is what makes that explanation true, and
+    // what stops a direct POST from bypassing it.
+    if (!isTest && b.is_manual && (!b.host_email?.trim() || !b.requester_name?.trim())) {
+      return NextResponse.json(
+        { error: 'Add the host\'s full name and email to send a planner.' },
+        { status: 400 },
+      );
+    }
+
     const to = isTest
       ? (user.email ?? await resolveUserEmail(user.id))
-      : (b.host_email || (b.requester_id ? await resolveUserEmail(b.requester_id) : null));
-    if (isTest && !to) return NextResponse.json({ error: 'No email on your account to send the test to.' }, { status: 400 });
-    if (to && process.env.RESEND_API_KEY) {
+      : await clientEmailFor(b);
+    if (!to) {
+      return NextResponse.json(
+        { error: isTest ? 'No email on your account to send the test to.' : 'No client email on this booking.' },
+        { status: 400 },
+      );
+    }
+
+    // `name`, NOT `dj_name`. There is no users.dj_name — dj_name is a column on
+    // BOOKINGS (denormalised) and a placeholder in the contract template, and
+    // selecting it here made PostgREST reject the whole query. That returned
+    // null, which fell through to the !djRow branch below and told every DJ
+    // alive they weren't Pro. A wrong column name in a select doesn't throw;
+    // it just quietly hands you nothing.
+    const { data: djData, error: djErr } = await admin
+      .from('users')
+      .select('name, planner_lead_days, mob_custom_event_types, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source')
+      .eq('id', acting.djId)
+      .maybeSingle();
+    const djRow = djData as unknown as (AccessFields & { name?: string | null; planner_lead_days?: number | null; mob_custom_event_types?: unknown }) | null;
+    // A failed QUERY and a genuinely un-subscribed DJ are different problems and
+    // must not share an answer. That conflation is exactly what hid this bug.
+    if (djErr) {
+      return NextResponse.json({ error: 'Could not read your account.' }, { status: 500 });
+    }
+    const djName = djRow?.name || 'your DJ';
+
+    // Tier gate, SERVER-side. The planner is part of the Pro suite that
+    // lib/access already describes as "contracts / deposits / event info
+    // sheet" — this is the event info sheet.
+    //
+    // The row hides the action too, but that is not a paywall: anyone can POST
+    // here directly. This is the paywall.
+    //
+    // The CLIENT is never gated and never will be. They have no account, they
+    // pay nobody, and charging the person filling in the form would be
+    // charging the wrong end of the transaction.
+    //
+    // NOTE: lib/access says an existing booking should be judged by
+    // bookingAllows(tier_stamp) — but tier_stamp is still never written
+    // anywhere, so it would deny everyone. Current standing is the only honest
+    // signal that exists today. (Same compromise as /api/payments.)
+    if (!djRow || !canUsePro(djRow)) {
+      return NextResponse.json(
+        { error: 'Planners are a Pro feature.' }, { status: 403 },
+      );
+    }
+
+    // ── The planner row ───────────────────────────────────────────────────
+    //
+    // Already exists? Then this is a resend, and we DO NOT rebuild it.
+    //
+    // `fields` is a snapshot and `responses` is keyed to it. Recomposing the
+    // template on a resend would silently orphan every answer already given
+    // against any id that moved or changed — and a resend is most likely
+    // precisely when a client is halfway through. The one thing this feature
+    // cannot do is lose a form somebody spent a week filling in.
+    const { data: existingData } = await db
+      .from('booking_planners')
+      .select('id, fields, responses, status, manual_reminder_sends, cancelled_at')
+      .eq('booking_id', bookingId)
+      .maybeSingle();
+    let planner = existingData as unknown as (PlannerRow & { cancelled_at?: string | null }) | null;
+    // A CANCELLED planner is treated as if none exists — this send is a fresh
+    // start, not a resend. Drop the cancelled row first so the compose-and-insert
+    // path below builds a clean new one (new link; the old cancelled link 404s,
+    // which is right once a replacement has gone out).
+    if (planner && planner.cancelled_at) {
+      await db.from('booking_planners').delete().eq('id', planner.id).eq('dj_id', acting.djId);
+      planner = null;
+    }
+    const isResend = !!planner;
+
+    // A resend is a reminder — cap it at 3 per rolling 24h. (The first send,
+    // and a test, are never limited.) On success we also stamp last_reminder_at,
+    // which is what the host's notification bell reads for "Planner reminder".
+    if (isResend && !isTest && planner) {
+      const WINDOW = 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      const prior = Array.isArray((existingData as { manual_reminder_sends?: unknown }).manual_reminder_sends)
+        ? ((existingData as { manual_reminder_sends?: unknown }).manual_reminder_sends as unknown[])
+        : [];
+      const recent = prior
+        .map((s) => (typeof s === 'string' ? Date.parse(s) : NaN))
+        .filter((t) => Number.isFinite(t) && now - t < WINDOW) as number[];
+      if (recent.length >= 3) {
+        const oldest = Math.min(...recent);
+        const hrs = Math.max(1, Math.ceil((WINDOW - (now - oldest)) / 3600000));
+        return NextResponse.json(
+          { error: `Reminder limit reached — up to 3 per 24 hours. Try again in about ${hrs} hour${hrs === 1 ? '' : 's'}.` },
+          { status: 429 },
+        );
+      }
+      const nowIso = new Date().toISOString();
+      try {
+        await db
+          .from('booking_planners')
+          .update({ manual_reminder_sends: [...recent.map((t) => new Date(t).toISOString()), nowIso], last_reminder_at: nowIso } as unknown as never)
+          .eq('id', planner.id);
+      } catch { /* non-fatal — the reminder still goes out */ }
+    }
+
+    if (!planner) {
+      // is_standard rows have dj_id null; the DJ's own customisations are
+      // theirs. Both, one query, resolved in code by pickTemplate.
+      const { data: tData } = await db
+        .from('planners')
+        .select('id, dj_id, name, event_type, is_standard, fields, template_key')
+        .or(`is_standard.eq.true,dj_id.eq.${acting.djId}`);
+      const templates = (tData as unknown as PlannerTemplate[] | null) || [];
+
+      // "Use a different planner" — the modal's escape hatch for when the
+      // event type guessed wrong (a Reunion that's really a wedding reception,
+      // say). Optional: with no plannerId this resolves exactly as before, so
+      // the one-click path is untouched.
+      const forcedId = typeof body.plannerId === 'string' ? body.plannerId : '';
+      if (forcedId) {
+        // Must be a template this DJ can actually use: stock, or their own.
+        // Without this check a plannerId is a read of any DJ's private
+        // template by anyone who can guess a uuid.
+        const forced = templates.find((t) => t.id === forcedId);
+        if (!forced) {
+          return NextResponse.json({ error: 'Planner not found.' }, { status: 404 });
+        }
+      }
+
+      const { base, override } = pickTemplate(templates, acting.djId, b.event_type);
+      if (!base) {
+        // The stock base is seeded. Missing means the seed never ran — a
+        // deployment problem, not something the DJ did.
+        return NextResponse.json(
+          { error: 'No planner template available.' }, { status: 500 },
+        );
+      }
+
+      // A forced pick REPLACES the override, not the base. The base carries
+      // Do NOT play and Notes and the shared spine every event needs; the
+      // override is the event-specific half. "Send the wedding one instead"
+      // means swap that half — not throw away the questions every planner has.
+      const forcedRaw = forcedId ? templates.find((t) => t.id === forcedId) : undefined;
+      // The send modal lists every template under its STOCK id (so a stock
+      // template and the DJ's saved fork of it read as one row). If the DJ
+      // forced a STOCK row but has saved their own fork of it, send the FORK —
+      // their customised questions — not the stock defaults. The fork is keyed
+      // by template_key === the stock id. Without this, clicking your own
+      // customised planner would mail the client the un-customised version.
+      const forcedTpl = forcedRaw && forcedRaw.is_standard
+        ? (templates.find((t) => !t.is_standard && t.dj_id === acting.djId && t.template_key === forcedRaw.id) ?? forcedRaw)
+        : forcedRaw;
+      // A custom planner the DJ built from scratch is standalone — it carries
+      // exactly the questions they authored and does NOT fold in the base spine.
+      // Everything else composes onto the base as before.
+      const isCustom = isCustomEventType(forcedTpl?.event_type);
+      const overrideFields = forcedTpl
+        ? (forcedTpl.id === base.id ? [] : forcedTpl.fields || [])
+        : (override?.fields || []);
+      // The booking already told us about the ceremony and cocktail hour, so
+      // strip the questions it answers (the "ceremony music needed?" toggle
+      // always; the ceremony / cocktail fields when that part of the day
+      // doesn't exist). Works for stock AND the DJ's own template.
+      const composed = isCustom
+        ? (forcedTpl?.fields || [])
+        : composeFields(base.fields || [], overrideFields);
+      const fields = dropFieldsAnsweredByBooking(composed, b);
+      // Prefill runs ONCE, here, and is stored. Not recomputed per page load:
+      // if the DJ edits the booking tomorrow the client's form must not shift
+      // under them mid-answer.
+      //
+      // The cast: BookingRow is this route's own select, not the page's
+      // UpcomingBooking, and an interface gets no implicit index signature — so
+      // TS won't hand it to a `& Record<string, unknown>` parameter even though
+      // every key the helper reads is right there. One cast, one call site.
+      const responses = applyPrefill(
+        fields,
+        b as unknown as Partial<UpcomingBooking> & Record<string, unknown>,
+        djName,
+        {},
+      );
+
+      if (isTest) {
+        // A TEST writes NOTHING — no row, no status flip. Keep the composed
+        // fields in memory only to count the questions for the email; the
+        // preview link points at the DJ-only preview page (the DJ is the
+        // recipient of a test).
+        planner = { id: '', fields, responses, status: 'sent' } as unknown as PlannerRow;
+      } else {
+        const { data: created, error: insErr } = await db
+          .from('booking_planners')
+          .insert({
+            booking_id: bookingId,
+            dj_id: acting.djId,
+            planner_id: (forcedTpl?.id || override?.id || base.id) ?? null,
+            fields,
+            responses,
+            status: 'sent',
+          } as unknown as never)
+          .select('id, fields, responses, status')
+          .single();
+        // 500, never 502 — Cloudflare would eat the body. See the header.
+        if (insErr || !created) {
+          return NextResponse.json({ error: 'Could not create the planner.' }, { status: 500 });
+        }
+        planner = created as unknown as PlannerRow;
+      }
+    }
+
+    // planner_status on the booking is NOT written here. trg_sync_planner_status
+    // owns it — one writer, so the strip can't go stale (schema, §4).
+
+    // Stamp the SEND time on the booking for the booking log. `is('planner_sent_at', null)`
+    // means only the FIRST send records a time — resends don't overwrite it — and a
+    // planner that predates this column gets its time on the next resend. Best-effort;
+    // a real send must never fail because the log couldn't be stamped.
+    if (!isTest) {
+      try {
+        await admin
+          .from('bookings')
+          .update({ planner_sent_at: new Date().toISOString() } as unknown as never)
+          .eq('id', bookingId)
+          .is('planner_sent_at' as never, null);
+      } catch { /* non-fatal — the planner still sent */ }
+      // Log the send HERE, once the planner exists — the action is the send, not
+      // the email (a failed email returns early below and must not lose the log).
+      await logActivity(acting, {
+        action: isResend ? 'planner.resent' : 'planner.sent',
+        summary: isResend ? 'Resent the Planner & Playlist' : 'Sent the Planner & Playlist',
+        bookingId,
+      });
+    }
+
+    // A test with no saved planner has no /planner/[id] yet — link the DJ to the
+    // DJ-only preview (they are the recipient) instead of a dead URL.
+    const url = (isTest && !planner.id)
+      // Carry the bookingId so the preview renders the booking-scoped view
+      // (with the "Your booking" strip) rather than the generic no-booking
+      // template. planner-preview is DJ-only and a test goes to the DJ, so they
+      // can open it. eventType stays so a non-auto template choice is honoured.
+      ? `${SITE_URL}/planner-preview?bookingId=${encodeURIComponent(bookingId)}${b.event_type ? `&eventType=${encodeURIComponent(b.event_type)}` : ''}`
+      : `${SITE_URL}/planner/${planner.id}`;
+
+    // ── The email ─────────────────────────────────────────────────────────
+    if (process.env.RESEND_API_KEY) {
       const hostFull = b.requester_name?.trim() || (b.requester_id ? await resolveUserName(b.requester_id) : null) || '';
       const hi = esc(hostFull.split(' ')[0] || 'there');
       const when = fmtDate(b.event_date);
 
-      let bodyBlocks = '';
-      if (mode === 'upload') {
-        bodyBlocks = `<p style="margin:0 0 16px;color:#444;font-size:14px;line-height:1.7;">${esc(djName)}'s rider is attached to this email as a PDF. Please review it and let them know if anything can't be provided.</p>`;
-      } else {
-        // Boxes in the DJ's order, skipping disabled ones — mirrors the PDF.
-        const boxes = groupRiderBoxes(items).filter((box) => !box.disabled && box.items.length);
-        const list = (arr: typeof items) => arr.map((i) => `<li style="margin:0 0 6px;color:#444;font-size:14px;line-height:1.6;">${esc(riderLine(i))}</li>`).join('');
-        const secBlock = (label: string, arr: typeof items) => arr.length
-          ? `<p style="margin:16px 0 6px;color:#111;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">${esc(label)}</p><ul style="margin:0 0 8px;padding-left:18px;">${list(arr)}</ul>` : '';
-        bodyBlocks = boxes.map((box) => secBlock(box.title, box.items)).join('');
+      // Event type — cased for the subject ("Wedding Planner & Playlist") and
+      // lower-cased for the in-sentence use ("run your wedding smoothly").
+      // Custom event types resolve their label from the DJ's own list.
+      const custom = parseCustomEventTypes(djRow?.mob_custom_event_types);
+      const eventTypeLabel = b.event_type ? mobEventLabel(b.event_type, custom) : 'Event';
+      const eventTypeLower = eventTypeLabel.toLowerCase();
+
+      // The latest the client can submit: the event date minus how many days
+      // ahead this DJ asks for it (users.planner_lead_days, default 14). Same
+      // rule the planner page enforces — shown here, highlighted, so the client
+      // sees the deadline in the email that first asks them to fill it in.
+      const leadDays = djRow?.planner_lead_days ?? 14;
+      let dueLabel = '';
+      // Past the due date? Compare date-only (midnight) so the deadline day
+      // itself isn't flagged as overdue. A past-due banner reads RED, not amber.
+      let pastDue = false;
+      if (b.event_date) {
+        const due = new Date(`${b.event_date}T12:00:00`);
+        due.setDate(due.getDate() - leadDays);
+        dueLabel = due.toLocaleDateString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+        });
+        const dueMid = new Date(due); dueMid.setHours(0, 0, 0, 0);
+        const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+        pastDue = dueMid.getTime() < todayMid.getTime();
       }
+      // On the FIRST send we never flag the client as "past due" — they've only
+      // just received the planner. If the DJ sent it after the due date has
+      // already passed, show a neutral "return it ASAP" nudge instead of the red
+      // overdue banner (which is reserved for reminder emails on a planner the
+      // client has already been sitting on).
+      const dueBanner = dueLabel
+        ? (pastDue
+          ? (isResend
+            ? `<div style="background:#fdecec;border:1px solid #f3b6b6;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
+<p style="margin:0;color:#8a1f1f;font-size:14px;line-height:1.6;text-align:center;">Past due &mdash; your Planner &amp; Playlist was due<br/><strong style="color:#6f1515;font-size:16px;">${esc(dueLabel)}</strong><br/>Please complete it as soon as you can.</p>
+</div>`
+            : `<div style="background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
+<p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;text-align:center;">Please return your completed Planner &amp; Playlist as soon as possible.</p>
+</div>`)
+          : `<div style="background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
+<p style="margin:0;color:#7a5b00;font-size:14px;line-height:1.6;text-align:center;">Please complete your Planner &amp; Playlist by<br/><strong style="color:#5a4300;font-size:16px;">${esc(dueLabel)}</strong></p>
+</div>`)
+        : '';
 
       const testNote = isTest
-        ? `<p style="margin:0 0 16px;padding:10px 14px;background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;color:#7a5b00;font-size:13px;line-height:1.6;">This is a <strong>test copy</strong> — exactly what the host receives. It was <strong>not</strong> sent to the host.</p>`
-        : '';
-      // Rider name (when set) leads the heading; falls back to the DJ's name.
-      const heading = riderName ? `${esc(djName)} — ${esc(riderName)}` : `${esc(djName)}'s rider`;
-      const attachNote = attachments.length
-        ? (attachments.length > 1 ? ' The full rider and its attachments are attached to this email.' : ' The full rider is attached as a PDF.')
+        ? `<p style="margin:0 0 16px;padding:10px 14px;background:#fff8e1;border:1px solid #ffe08a;border-radius:8px;color:#7a5b00;font-size:13px;line-height:1.6;">This is a <strong>test copy</strong> \u2014 exactly what the client receives. It was <strong>not</strong> sent to the client.</p>`
         : '';
       const content = `${testNote}
-<h1 style="margin:0 0 6px;font-size:22px;color:#111;">Hi ${hi} — ${heading}</h1>
-<p style="margin:0 0 16px;color:#666;font-size:14px;line-height:1.7;">
-Here's what ${esc(djName)} needs from the venue for ${esc(when)}${b.venue_name ? ` at ${esc(b.venue_name)}` : ''}.${attachNote}
+<h1 style="margin:0 0 12px;font-size:22px;color:#111;">Hi ${hi}, ${isResend ? 'your planner is still open' : "let's plan your event!"}</h1>
+<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">
+${isResend
+  ? `Picking up where you left off — nothing has been lost.`
+  : `${esc(djName)} needs a few details to run your ${esc(eventTypeLower)} smoothly: the songs that matter, the names to get right, and anything that should never be played.`}
 </p>
-${bodyBlocks}
-<table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0 6px;">
+<p style="margin:0 0 20px;color:#666;font-size:14px;line-height:1.7;">
+As you fill out the Planner &amp; Playlist page, everything you enter auto-saves as you go. Enter what you know now and come back to finish the rest whenever you're ready. The latest the planner can be completed is listed below.
+</p>
+<table align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 20px;">
 <tr><td style="background:#000000;border-radius:8px;">
-<a href="${url}" style="display:inline-block;padding:14px 28px;color:#00f5c4;font-size:15px;font-weight:700;text-decoration:none;">View &amp; Confirm Rider</a>
+<a href="${url}" style="display:inline-block;padding:14px 28px;color:#00f5c4;font-size:15px;font-weight:700;text-decoration:none;">Open Planner &amp; Playlist</a>
 </td></tr></table>
-<p style="margin:14px 0 0;color:#999;font-size:12px;line-height:1.6;word-break:break-all;">Or paste this link:<br/><a href="${url}" style="color:#999;">${url}</a></p>`;
+${dueBanner}
+<p style="margin:0 0 4px;color:#bbb;font-size:11px;line-height:1.6;text-align:center;">Reference: ${referenceCode(bookingId, 'other')}</p>
+<p style="margin:0;color:#999;font-size:12px;line-height:1.6;word-break:break-all;">
+Or paste this into your browser:<br/><a href="${url}" style="color:#999;">${url}</a>
+</p>
+<p style="margin:18px 0 0;color:#bbb;font-size:11px;line-height:1.6;">
+This link is private to your booking — anyone with it can see and edit your planner, so keep it to the people helping you plan.
+</p>`;
+
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        const subject = `${isTest ? '[TEST] ' : ''}${djName} — ${riderName ? `${riderName} (DJ rider)` : 'DJ rider'} for ${when}`;
         await resend.emails.send({
-          from: FROM, to, subject, html: shell(content),
-          attachments: attachments.length ? attachments : undefined,
+          from: FROM,
+          to,
+          // "<event date> <event type> Planner & Playlist" — a resend prefixes
+          // "Reminder:", a test prefixes "[TEST]". Subject date omits the
+          // weekday (kept in the body banner) to stay short.
+          subject: `${isTest ? '[TEST] ' : ''}${isResend ? 'Reminder: ' : ''}${b.event_date ? `${new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} ` : ''}${eventTypeLabel} Planner & Playlist`,
+          html: shell(content),
         });
       } catch {
+        // The row exists and the link works. A dead Resend key must not make
+        // the DJ think the planner wasn't created — they can copy the link.
         if (isTest) return NextResponse.json({ ok: true, test: true, warning: 'Could not send the test email — try again.' });
-        return NextResponse.json({ ok: true, id, url, status: 'sent', hostName: b.requester_name || null, warning: 'Rider saved, but the email could not be sent. Copy the link instead.' });
+        return NextResponse.json({
+          id: planner.id, url, status: planner.status, resent: isResend,
+          warning: 'Planner created, but the email could not be sent. Copy the link instead.',
+        });
       }
     }
 
     if (isTest) return NextResponse.json({ ok: true, test: true, emailedTo: to });
-    return NextResponse.json({ ok: true, id, url, status: 'sent', hostName: b.requester_name || null, emailed: !!to });
+    return NextResponse.json({ id: planner.id, url, status: planner.status, resent: isResend });
   } catch {
-    return NextResponse.json({ error: 'Could not send the rider.' }, { status: 500 });
+    // 500, never 502 — see the header.
+    return NextResponse.json({ error: 'Could not send the planner.' }, { status: 500 });
+  }
+}
+
+// DELETE /api/planner/request?bookingId=…
+//
+// RETRACT the sent Planner & Playlist. Removes the booking_planners row for this
+// booking — including anything the client has already filled in — so the stage
+// goes back to "Not sent" and the DJ can send a different one. Permanent: the
+// client's answers are gone, which is why the UI gates this behind a confirm
+// (and a stronger one once the host has started filling it out).
+//
+// Session-required, ownership-checked — same as POST. The client's no-session
+// link (/api/planner/[id]) can never reach here.
+export async function DELETE(req: Request) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    const acting = await getActingContext(user.id);
+
+    const bookingId = new URL(req.url).searchParams.get('bookingId') || '';
+    if (!bookingId) return NextResponse.json({ error: 'Missing bookingId' }, { status: 400 });
+
+    const admin = createAdminClient();
+    const db = admin as unknown as SupabaseClient;
+
+    // Ownership — the booking must be this acting DJ's. 403 (not 404) matches POST.
+    // Pull the fields the cancellation email needs while we're here.
+    const { data: bData } = await admin
+      .from('bookings')
+      .select(BOOKING_COLS)
+      .eq('id', bookingId)
+      .maybeSingle();
+    const b = bData as unknown as BookingRow | null;
+    if (!b) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
+    if (b.dj_id !== acting.djId) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 });
+
+    // SOFT-cancel, not delete. The row stays so the host's old link can land on
+    // a friendly "this was cancelled" page instead of a bare 404. cancelled_at
+    // is what every reader keys off: the pipeline stage treats it as not-sent
+    // (so a different planner can go out), and the client page shows the message.
+    // dj_id is pinned too — a row can only be cancelled by its owner.
+    const { error: cancErr } = await db
+      .from('booking_planners')
+      .update({ cancelled_at: new Date().toISOString() } as unknown as never)
+      .eq('booking_id', bookingId)
+      .eq('dj_id', acting.djId);
+    // 500, never 502 — see the header.
+    if (cancErr) return NextResponse.json({ error: 'Could not cancel the planner.' }, { status: 500 });
+
+    // Clear the send stamp and the booking's planner_status so the stage reads as
+    // never-sent. planner_status is normally owned by trg_sync_planner_status,
+    // but the row's status is left untouched here (cancelled_at is the signal),
+    // so nothing re-fires the trigger — this write stands until the next send.
+    try {
+      await admin
+        .from('bookings')
+        .update({ planner_sent_at: null, planner_status: null } as unknown as never)
+        .eq('id', bookingId);
+    } catch { /* non-fatal — the planner is already cancelled */ }
+
+    await logActivity(acting, {
+      action: 'planner.cancelled',
+      summary: 'Cancelled the Planner & Playlist',
+      bookingId,
+    });
+
+    // Tell the host their Planner & Playlist was cancelled — the link they had
+    // now 404s, so they shouldn't be left wondering. Best-effort: the retract has
+    // already succeeded and must not fail because an email couldn't go out.
+    let emailed = false;
+    const to = await clientEmailFor(b);
+    if (to && process.env.RESEND_API_KEY) {
+      try {
+        const { data: djData } = await admin
+          .from('users')
+          .select('name, mob_custom_event_types')
+          .eq('id', acting.djId)
+          .maybeSingle();
+        const djRow = djData as unknown as { name?: string | null; mob_custom_event_types?: unknown } | null;
+        const djName = djRow?.name || 'your DJ';
+        const hostFull = b.requester_name?.trim() || (b.requester_id ? await resolveUserName(b.requester_id) : null) || '';
+        const hi = esc(hostFull.split(' ')[0] || 'there');
+        const custom = parseCustomEventTypes(djRow?.mob_custom_event_types);
+        const eventTypeLabel = b.event_type ? mobEventLabel(b.event_type, custom) : 'Event';
+        const when = fmtDate(b.event_date);
+        const content = `
+<h1 style="margin:0 0 12px;font-size:22px;color:#111;">Hi ${hi}, your Planner &amp; Playlist was cancelled</h1>
+<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">
+${esc(djName)} has cancelled the Planner &amp; Playlist for your ${esc(eventTypeLabel.toLowerCase())}${when ? ` on ${esc(when)}` : ''}. The link you had will no longer work.
+</p>
+<p style="margin:0 0 18px;color:#666;font-size:14px;line-height:1.7;">
+If this is a surprise, or you'd started filling it in, just reply to ${esc(djName)} and they can send you a fresh one.
+</p>`;
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: FROM,
+          to,
+          subject: `${b.event_date ? `${new Date(`${b.event_date}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} ` : ''}${eventTypeLabel} Planner & Playlist — cancelled`,
+          html: shell(content),
+        });
+        emailed = true;
+      } catch { /* non-fatal — the planner is already cancelled */ }
+    }
+
+    return NextResponse.json({ ok: true, emailed });
+  } catch {
+    return NextResponse.json({ error: 'Could not cancel the planner.' }, { status: 500 });
   }
 }
