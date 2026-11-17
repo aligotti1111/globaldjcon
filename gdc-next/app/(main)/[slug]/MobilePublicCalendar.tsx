@@ -785,6 +785,11 @@ export default function MobilePublicCalendar({
           dateKey={ownerEditKey}
           dayData={bookingDays[ownerEditKey] || {}}
           hasBooking={(countByDate[ownerEditKey] || 0) > 0}
+          // The date can still take more bookings — not force-closed and not at
+          // the per-day max. When true, the rate-adjust control stays available
+          // even if there's already a booking: the nudge only affects NEW
+          // bookings on the date, never the existing one.
+          canTakeMore={!bookingDays[ownerEditKey]?.booked && (countByDate[ownerEditKey] || 0) < defaultBookingsPerDay}
           bookingLinks={eventsByDate[ownerEditKey] || []}
           previewPackages={previewPackages}
           cur={previewCur}
@@ -1367,6 +1372,7 @@ function OwnerDayEditModal({
   dateKey,
   dayData,
   hasBooking = false,
+  canTakeMore = false,
   bookingLinks = [],
   previewPackages,
   cur,
@@ -1378,6 +1384,10 @@ function OwnerDayEditModal({
   // True when this date has a real booking on it (from the calendar's booking
   // counts), independent of the owner's manual "booked" flag.
   hasBooking?: boolean;
+  // True when the date still has open capacity (not force-closed, under the
+  // per-day max) — the rate-adjust control stays usable for NEW bookings even
+  // when a booking already exists.
+  canTakeMore?: boolean;
   // One entry per booking on this date: a short label (venue · time) and the
   // booking card's share token (null for bookings that have no card).
   bookingLinks?: { label: string; token: string | null }[];
@@ -1494,10 +1504,12 @@ function OwnerDayEditModal({
           </button>
         </div>
 
-        {!booked && !hasRealBooking && canAdjust && (
+        {!booked && canTakeMore && canAdjust && (
           <div className={styles.ownerModalField}>
             <label className={styles.ownerModalLabel}>
-              Charge more or less for a booking on this date.
+              {hasRealBooking
+                ? 'Charge more or less for any NEW booking on this date. Your existing booking isn’t affected.'
+                : 'Charge more or less for a booking on this date.'}
             </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
               <button
@@ -1579,7 +1591,7 @@ function OwnerDayEditModal({
           </div>
         )}
 
-        {!booked && !hasRealBooking && !canAdjust && (
+        {!booked && canTakeMore && !canAdjust && (
           <div className={styles.ownerModalField}>
             <span className={styles.ownerModalHint}>
               {pkgs.length === 0
@@ -1608,7 +1620,9 @@ function OwnerDayEditModal({
           return (
             <div className={styles.ownerModalField}>
               <span className={styles.ownerModalHint}>
-                This date is booked. Manage {items.length > 1 ? 'these bookings' : 'this booking'} from your Booking Requests.
+                {canTakeMore
+                  ? `This date has ${items.length > 1 ? 'bookings' : 'a booking'} but still accepts more. Manage ${items.length > 1 ? 'them' : 'it'} from your Booking Requests.`
+                  : `This date is booked. Manage ${items.length > 1 ? 'these bookings' : 'this booking'} from your Booking Requests.`}
               </span>
               {items.map((it, i) => {
                 const rowStyle: React.CSSProperties = {
