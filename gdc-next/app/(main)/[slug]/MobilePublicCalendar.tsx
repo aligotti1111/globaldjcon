@@ -200,6 +200,12 @@ export default function MobilePublicCalendar({
   // manual "mark booked" flag. Manual bookings insert a row but never set that
   // flag, which is why they weren't showing here. Mirrors PublicCalendar.
   const [countByDate, setCountByDate] = useState<Record<string, number>>({});
+  // The per-date count is fetched async after mount, so on the first paint it's
+  // empty. A day that carries a stale `unavailable` flag AND actually has a
+  // booking would briefly show the grey "unavailable" look, then flip red once
+  // the count arrives — a jarring flash. We hold the unavailable styling until
+  // counts are known so the day resolves straight to its real state.
+  const [countsLoaded, setCountsLoaded] = useState(false);
   // A short label + card token per booking on each date, so the owner day
   // modal can list a date's bookings one line each, each linking to its card.
   const [eventsByDate, setEventsByDate] = useState<Record<string, { label: string; token: string | null }[]>>({});
@@ -220,7 +226,8 @@ export default function MobilePublicCalendar({
         const to = toDate.toISOString().slice(0, 10);
         const params = new URLSearchParams({ djId, from, to });
         const res = await fetch(`/api/dj-upcoming-events?${params.toString()}`);
-        if (!mounted || !res.ok) return;
+        if (!mounted) return;
+        if (!res.ok) { setCountsLoaded(true); return; }
         const json = await res.json();
         if (!mounted) return;
         const counts: Record<string, number> = {};
@@ -251,8 +258,10 @@ export default function MobilePublicCalendar({
         }
         setCountByDate(counts);
         setEventsByDate(labels);
+        setCountsLoaded(true);
       } catch {
         // Non-fatal — calendar still renders from the booking_days flags.
+        if (mounted) setCountsLoaded(true);
       }
     })();
     return () => { mounted = false; };
@@ -657,6 +666,7 @@ export default function MobilePublicCalendar({
           today={today}
           bookingDays={bookingDays}
           countByDate={countByDate}
+          countsLoaded={countsLoaded}
           bookingWindowMonths={bookingWindowMonths}
           defaultBookingsPerDay={defaultBookingsPerDay}
           partialFill={partialFill}
@@ -679,6 +689,7 @@ export default function MobilePublicCalendar({
           today={today}
           bookingDays={bookingDays}
           countByDate={countByDate}
+          countsLoaded={countsLoaded}
           bookingWindowMonths={bookingWindowMonths}
           defaultBookingsPerDay={defaultBookingsPerDay}
           partialFill={partialFill}
@@ -795,6 +806,7 @@ function SingleMonthView({
   today,
   bookingDays,
   countByDate,
+  countsLoaded,
   bookingWindowMonths,
   defaultBookingsPerDay,
   partialFill,
@@ -814,6 +826,7 @@ function SingleMonthView({
   today: Date;
   bookingDays: MobileBookingDays;
   countByDate: Record<string, number>;
+  countsLoaded: boolean;
   bookingWindowMonths: number;
   defaultBookingsPerDay: number;
   partialFill: boolean;
@@ -869,7 +882,10 @@ function SingleMonthView({
       approvedCount >= defaultBookingsPerDay
       || !!dayData.booked
       || (unavailManual && approvedCount > 0);
-    const isUnavail = unavailManual && !isBooked;
+    // Hold the grey "unavailable" look until counts load — a flagged day may
+    // actually have a booking (= booked, not unavailable), and grey-then-red is
+    // a jarring flash. Until then it renders neutral rather than grey.
+    const isUnavail = unavailManual && !isBooked && countsLoaded;
     const bookingsLeft = Math.max(0, defaultBookingsPerDay - approvedCount);
     const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
     // A day that's hit its booking capacity is BOOKED for display purposes
@@ -1116,6 +1132,7 @@ function RollingMonthsView({
   today,
   bookingDays,
   countByDate,
+  countsLoaded,
   bookingWindowMonths,
   defaultBookingsPerDay,
   partialFill,
@@ -1130,6 +1147,7 @@ function RollingMonthsView({
   today: Date;
   bookingDays: MobileBookingDays;
   countByDate: Record<string, number>;
+  countsLoaded: boolean;
   bookingWindowMonths: number;
   defaultBookingsPerDay: number;
   partialFill: boolean;
@@ -1172,7 +1190,10 @@ function RollingMonthsView({
         approvedCount >= defaultBookingsPerDay
         || !!dayData.booked
         || (unavailManual && approvedCount > 0);
-      const isUnavail = unavailManual && !isBooked;
+      // Hold the grey "unavailable" look until counts load — a flagged day may
+    // actually have a booking (= booked, not unavailable), and grey-then-red is
+    // a jarring flash. Until then it renders neutral rather than grey.
+    const isUnavail = unavailManual && !isBooked && countsLoaded;
       const bookingsLeft = Math.max(0, defaultBookingsPerDay - approvedCount);
       const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
       const isToday = key === todayKey;
