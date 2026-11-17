@@ -649,10 +649,11 @@ export function buildBookingApprovedBody(opts: {
   currency: string;
   eventDate: string | undefined;
   equipNeedsText?: string | undefined;
+  reference?: string | undefined;
   billBox: string;
   progressBox: string;
 }): string {
-  const { recipientName, otherPartyName, recipientRole, eventType, eventDetails, setType, venueType, venueName, venueAddress, startTime, endTime, packageTitle, packageDetails, addons, agreedPrice, overtimeRate, currency, eventDate, equipNeedsText, billBox, progressBox } = opts;
+  const { recipientName, otherPartyName, recipientRole, eventType, eventDetails, setType, venueType, venueName, venueAddress, startTime, endTime, packageTitle, packageDetails, addons, agreedPrice, overtimeRate, currency, eventDate, equipNeedsText, reference, billBox, progressBox } = opts;
   const sym = currencySymbol(currency);
   const otherLabel = recipientRole === 'dj' ? 'Booker' : 'DJ';
   // ── Add to Calendar ── A one-tap Google Calendar link so this single
@@ -683,6 +684,7 @@ export function buildBookingApprovedBody(opts: {
           venueTypeText: venueTypeLabel(venueType),
           venueName,
           venueAddress,
+          reference,
           equipmentText: equipNeedsText ? `Venue provides all — DJ needs: ${equipNeedsText}` : undefined,
           // Agreed Price moved out — the PRICE breakdown below is the single
           // source for money. Package moved to its own box just below.
