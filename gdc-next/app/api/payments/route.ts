@@ -615,6 +615,9 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
       // Balance top-up skips it — the pipeline already completed the first time,
       // and re-showing "Deposit skipped / Planner / Balance paid" here is noise.
       const progressBox = isNewBalanceTopUp ? '' : await bookingProgressBox(p.booking_id);
+      // Muted booking reference, right-aligned, just above the progress box —
+      // matches the deposit-received email.
+      const refLine = `<p style="margin:18px 0 0;color:#bbb;font-size:11px;text-align:right;">Reference: ${referenceCode(p.booking_id, 'other')}</p>`;
 
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
@@ -622,7 +625,7 @@ ${money(nextPaid, cur)} of ${money(Number(p.amount), cur)} received — <strong>
           from: FROM,
           to,
           subject: `${status === 'paid' ? `Payment received — ${money(nextPaid, cur)}` : `Partial payment received — ${money(outstanding, cur)} still due`}${subjTail ? ` | ${subjTail}` : ''}`,
-          html: shell(content + (progressBox ? `<div style="margin-top:24px;">${progressBox}</div>` : '')),
+          html: shell(content + refLine + (progressBox ? `<div style="margin-top:12px;">${progressBox}</div>` : '')),
           attachments: receiptAtt ? [receiptAtt] : undefined,
         });
         // Record the receipt send so the card menu shows "Re-send receipt".
