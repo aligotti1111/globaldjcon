@@ -126,6 +126,7 @@ export async function POST(req: Request) {
 
       let bs: {
         mob_bookings_per_day?: number;
+        club_bookings_per_day?: number;
         mob_booking_days?: Record<string, {
           bookings_available?: number;
           booked?: boolean;
@@ -142,6 +143,7 @@ export async function POST(req: Request) {
           startTime?: string;
           endTime?: string;
           location?: string;
+          day_capacity?: number;
         }>;
       } = {};
       if (djRow?.booking_settings) {
@@ -154,10 +156,22 @@ export async function POST(req: Request) {
 
       const isClubBooking = !!booking.set_type || booking.booking_type === 'club';
       if (isClubBooking) {
-        // Club DJ — flip the date booked. Club DJs take one booking a day.
+        // Club DJ — flip the date booked only once approved bookings reach the
+        // day's capacity (per-day override, else club_bookings_per_day, default
+        // 1). Below capacity the flag stays off so the public calendar can show
+        // the day partly booked / still open. This booking is already 'approved'
+        // at this point, so the count includes it.
         if (!bs.booking_days) bs.booking_days = {};
         const existing = bs.booking_days[booking.event_date] || {};
-        bs.booking_days[booking.event_date] = { ...existing, booked: true };
+        const cap = Math.min(3, Math.max(1,
+          existing.day_capacity != null ? existing.day_capacity : (bs.club_bookings_per_day || 1)));
+        const { count } = await admin
+          .from('bookings')
+          .select('id', { count: 'exact', head: true })
+          .eq('dj_id', booking.dj_id)
+          .eq('event_date', booking.event_date)
+          .eq('status', 'approved');
+        bs.booking_days[booking.event_date] = { ...existing, booked: (count || 0) >= cap };
       } else {
         // Mobile DJ — decrement that day's remaining capacity. The day
         // is only fully booked once capacity hits zero.
