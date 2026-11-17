@@ -595,6 +595,34 @@ export default function BookingTab({
                     ))}
                   </select>
                 </div>
+                {/* Require a signed contract — sits above the tax toggle. */}
+                <div className={styles.settingRow} style={{ paddingTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.06)', marginTop: '1.1rem' }}>
+                  <div className={styles.settingLabelWrap}>
+                    <div className={styles.settingLabel}>Require a signed contract for each booking?</div>
+                    <div className={styles.settingHint}>
+                      Off by default. When on, you plan to send a contract for every booking before the event.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={requireContract}
+                    aria-label="Require a signed contract for each booking"
+                    onClick={() => setRequireContract(!requireContract)}
+                    style={{
+                      position: 'relative', width: 46, height: 26, borderRadius: 999,
+                      border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0,
+                      background: requireContract ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
+                      transition: 'background .15s ease',
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute', top: 3, left: requireContract ? 23 : 3,
+                      width: 20, height: 20, borderRadius: '50%', background: '#fff',
+                      transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
+                    }} />
+                  </button>
+                </div>
                 {/* Sales tax (optional, off by default) */}
                 <div className={styles.settingRow} style={{ paddingTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.06)', marginTop: '1.1rem' }}>
                   <div className={styles.settingLabelWrap}>
@@ -660,33 +688,6 @@ export default function BookingTab({
                     )}
                   </>
                 )}
-                <div className={styles.settingRow} style={{ paddingTop: '1.1rem', borderTop: '1px solid rgba(255,255,255,.06)', marginTop: '1.1rem' }}>
-                  <div className={styles.settingLabelWrap}>
-                    <div className={styles.settingLabel}>Require a signed contract for each booking?</div>
-                    <div className={styles.settingHint}>
-                      Off by default. When on, you plan to send a contract for every booking before the event.
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={requireContract}
-                    aria-label="Require a signed contract for each booking"
-                    onClick={() => setRequireContract(!requireContract)}
-                    style={{
-                      position: 'relative', width: 46, height: 26, borderRadius: 999,
-                      border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0,
-                      background: requireContract ? 'var(--neon,#00e0a4)' : 'rgba(255,255,255,.18)',
-                      transition: 'background .15s ease',
-                    }}
-                  >
-                    <span style={{
-                      position: 'absolute', top: 3, left: requireContract ? 23 : 3,
-                      width: 20, height: 20, borderRadius: '50%', background: '#fff',
-                      transition: 'left .15s ease', boxShadow: '0 1px 3px rgba(0,0,0,.4)',
-                    }} />
-                  </button>
-                </div>
 
                 {/* Fill-indicator — only meaningful when more than one booking a
                     day is allowed. Kept last in the list; shows a small mockup so
