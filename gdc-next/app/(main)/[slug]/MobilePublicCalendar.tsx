@@ -851,18 +851,19 @@ function SingleMonthView({
       year === today.getFullYear() &&
       month === today.getMonth() &&
       d === today.getDate();
-    const isUnavail = !!dayData.unavailable;
-    // A day is BOOKED/full only once the approved bookings REACH the company-wide
-    // "max bookings per day" — not at the first booking. countByDate (the real
-    // ledger) counts all approved bookings (manual + client) and is authoritative,
-    // so a stale remaining-counter can't wrongly close a day. The owner's manual
-    // "booked" flag still closes it outright.
+    const unavailManual = !!dayData.unavailable;
     const approvedCount = countByDate[key] || 0;
-    // Full when the ledger count reaches current capacity. A stored "booked"
-    // flag only closes a day that has NO real bookings behind it (a manual
-    // owner close) — so a stale auto-close left over from an old 1-per-day
-    // setting can't wrongly hide a partly-booked day.
-    const isBooked = approvedCount >= defaultBookingsPerDay || (approvedCount === 0 && !!dayData.booked);
+    // Whole-cell RED ("booked/closed"): the approved bookings reach the
+    // company-wide max per day, the owner marked the day booked, or the owner
+    // marked it unavailable AND it either has a real booking behind it OR is
+    // being viewed by a client (to the public a closed day reads as red, not a
+    // grey "unavailable"). Partial-fill only applies to genuinely-open days.
+    const isBooked =
+      approvedCount >= defaultBookingsPerDay
+      || !!dayData.booked
+      || (unavailManual && (approvedCount > 0 || !isOwnProfile));
+    // Grey "unavailable" stays only for the OWNER on an empty closed day.
+    const isUnavail = unavailManual && !isBooked;
     const bookingsLeft = Math.max(0, defaultBookingsPerDay - approvedCount);
     const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
     // A day that's hit its booking capacity is BOOKED for display purposes
@@ -880,7 +881,7 @@ function SingleMonthView({
       ? Math.min(1, approvedCount / defaultBookingsPerDay)
       : 0;
     const partialStyle: React.CSSProperties = partialFrac > 0
-      ? { background: `linear-gradient(115deg, rgba(255,95,95,0.5) ${Math.round(partialFrac * 100)}%, transparent ${Math.round(partialFrac * 100)}%)` }
+      ? { background: `linear-gradient(to bottom right, rgba(255,95,95,0.5) ${Math.round(partialFrac * 100)}%, transparent ${Math.round(partialFrac * 100)}%)` }
       : {};
     const isLastRow =
       Math.floor((firstDay + d - 1) / 7) ===
@@ -1149,12 +1150,15 @@ function RollingMonthsView({
       const key = dateKey(yr, mo, d);
       const dayData: MobileDayData = bookingDays[key] || {};
       const isPast = key < todayKey;
-      const isUnavail = !!dayData.unavailable;
-      // Booked/full only once approved bookings reach the company-wide "max
-      // bookings per day" (the ledger count is authoritative), or the owner
-      // marked it booked.
+      const unavailManual = !!dayData.unavailable;
       const approvedCount = countByDate[key] || 0;
-      const isBooked = !!dayData.booked || approvedCount >= defaultBookingsPerDay;
+      // Whole-cell RED when at capacity, manually booked, or manually unavailable
+      // with a booking behind it / viewed by a client (closed reads red to the public).
+      const isBooked =
+        approvedCount >= defaultBookingsPerDay
+        || !!dayData.booked
+        || (unavailManual && (approvedCount > 0 || !isOwnProfile));
+      const isUnavail = unavailManual && !isBooked;
       const bookingsLeft = Math.max(0, defaultBookingsPerDay - approvedCount);
       const isFull = !isBooked && !isUnavail && bookingsLeft <= 0;
       const isToday = key === todayKey;
@@ -1189,7 +1193,7 @@ function RollingMonthsView({
         ? Math.min(1, approvedCount / defaultBookingsPerDay)
         : 0;
       const miniPartialStyle: React.CSSProperties = miniPartialFrac > 0
-        ? { background: `linear-gradient(115deg, rgba(255,95,95,0.5) ${Math.round(miniPartialFrac * 100)}%, transparent ${Math.round(miniPartialFrac * 100)}%)` }
+        ? { background: `linear-gradient(to bottom right, rgba(255,95,95,0.5) ${Math.round(miniPartialFrac * 100)}%, transparent ${Math.round(miniPartialFrac * 100)}%)` }
         : {};
       cells.push(
         <div
