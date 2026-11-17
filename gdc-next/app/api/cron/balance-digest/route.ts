@@ -26,6 +26,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { canBook, type AccessFields } from '@/lib/access';
 import { MOB_EVENT_LABELS } from '@/lib/constants';
+import { referenceCode } from '@/lib/paymentMethods';
 import {
   agreedTotal,
   receivedByBooking,
@@ -211,6 +212,7 @@ export async function GET(req: Request) {
 <td style="padding:14px 0;border-bottom:1px solid #eee;vertical-align:top;text-align:right;white-space:nowrap;">
 <div style="font-size:16px;color:#c0392b;font-weight:700;">${money(outstanding, b.currency)}</div>
 <div style="font-size:11px;color:#999;">outstanding</div>
+<div style="font-size:11px;color:#bbb;margin-top:4px;">Reference: ${esc(referenceCode(b.id, 'other'))}</div>
 </td>
 </tr>`;
     }).join('');
