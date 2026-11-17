@@ -9,6 +9,7 @@ import { createAdminClient, resolveUserEmail, resolveUserName } from '@/lib/supa
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { normalizeGuests, sortGuests, headCount } from '@/lib/guestlist';
+import { referenceCode } from '@/lib/paymentMethods';
 
 export const runtime = 'nodejs';
 export const maxDuration = 20;
@@ -82,7 +83,8 @@ export async function POST(req: Request) {
 <table cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 6px;"><tr><td style="background:#000000;border-radius:8px;">
 <a href="${url}" style="display:inline-block;padding:14px 28px;color:#00f5c4;font-size:15px;font-weight:700;text-decoration:none;">View &amp; Confirm Guest List</a>
 </td></tr></table>
-<p style="margin:12px 0 0;color:#999;font-size:12px;word-break:break-all;">Or paste: <a href="${url}" style="color:#999;">${url}</a></p>`;
+<p style="margin:12px 0 0;color:#999;font-size:12px;word-break:break-all;">Or paste: <a href="${url}" style="color:#999;">${url}</a></p>
+<p style="margin:18px 0 0;color:#bbb;font-size:11px;text-align:right;">Reference: ${esc(referenceCode(bookingId, 'other'))}</p>`;
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({ from: FROM, to, subject: `${djName} — guest list for ${when}`, html: shell(content) });
