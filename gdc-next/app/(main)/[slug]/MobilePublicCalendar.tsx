@@ -880,9 +880,10 @@ function SingleMonthView({
     const partialFrac = partialFill && isAvail && approvedCount > 0 && defaultBookingsPerDay > 0
       ? Math.min(1, approvedCount / defaultBookingsPerDay)
       : 0;
-    const partialStyle: React.CSSProperties = partialFrac > 0
-      ? { background: `linear-gradient(to bottom right, rgba(255,95,95,0.5) ${Math.round(partialFrac * 100)}%, transparent ${Math.round(partialFrac * 100)}%)` }
-      : {};
+    // Rendered as a clip-path triangle overlay (below) so the diagonal edge runs
+    // corner-to-corner regardless of the cell's width:height — a gradient angle
+    // looks crooked on a wide rectangle.
+    const partialPct = Math.round(partialFrac * 100);
     const isLastRow =
       Math.floor((firstDay + d - 1) / 7) ===
       Math.floor((firstDay + daysInMonth - 1) / 7);
@@ -1034,8 +1035,15 @@ function SingleMonthView({
         key={key}
         className={cellClasses.join(' ')}
         onClick={cellClickHandler}
-        style={{ ...partialStyle, ...(cellClickHandler ? { cursor: 'pointer' } : {}) }}
+        style={{ position: 'relative', ...(cellClickHandler ? { cursor: 'pointer' } : {}) }}
       >
+        {partialFrac > 0 && (
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            background: 'rgba(255,95,95,0.5)',
+            clipPath: `polygon(0 0, ${partialPct}% 0, 0 ${partialPct}%)`,
+          }} />
+        )}
         <div className={numClasses.join(' ')}>{d}</div>
         {inner}
       </div>
@@ -1192,17 +1200,22 @@ function RollingMonthsView({
       const miniPartialFrac = partialFill && isAvail && approvedCount > 0 && defaultBookingsPerDay > 0
         ? Math.min(1, approvedCount / defaultBookingsPerDay)
         : 0;
-      const miniPartialStyle: React.CSSProperties = miniPartialFrac > 0
-        ? { background: `linear-gradient(to bottom right, rgba(255,95,95,0.5) ${Math.round(miniPartialFrac * 100)}%, transparent ${Math.round(miniPartialFrac * 100)}%)` }
-        : {};
+      const miniPartialPct = Math.round(miniPartialFrac * 100);
       cells.push(
         <div
           key={key}
           className={cellClasses.join(' ')}
           onClick={onCellClick}
-          style={miniPartialFrac > 0 ? miniPartialStyle : undefined}
+          style={miniPartialFrac > 0 ? { position: 'relative' } : undefined}
           title={miniManualBooked ? 'Manually marked booked' : undefined}
         >
+          {miniPartialFrac > 0 && (
+            <div style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none',
+              background: 'rgba(255,95,95,0.5)',
+              clipPath: `polygon(0 0, ${miniPartialPct}% 0, 0 ${miniPartialPct}%)`,
+            }} />
+          )}
           {d}
           {/* Public visitor: show "Book" label on available days so
               visitors can book directly from the 12-month grid. If this
