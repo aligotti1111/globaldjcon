@@ -182,12 +182,17 @@ export async function POST(req: Request) {
           ? dayData.bookings_available
           : defaultPerDay;
         const newCount = Math.max(0, current - 1);
+        // NOTE: we intentionally do NOT set a `booked: true` flag here when the
+        // last slot is taken. The public calendar already shows a day as fully
+        // booked when its approved-booking count reaches the CURRENT per-day max
+        // (mob_bookings_per_day). Writing a sticky `booked` flag based on
+        // remaining-slots-at-approval-time goes stale if the DJ later raises
+        // their per-day max — e.g. a day with 1 booking stayed solid red after
+        // the max went from 1 to 2. `booked` is now reserved for an explicit
+        // owner force-close from the calendar's ✕ control.
         bs.mob_booking_days[booking.event_date] = {
           ...dayData,
           bookings_available: newCount,
-          // When the last slot is taken, also mark the day booked so the
-          // public calendar shows it as unavailable.
-          ...(newCount <= 0 ? { booked: true } : {}),
         };
       }
 
