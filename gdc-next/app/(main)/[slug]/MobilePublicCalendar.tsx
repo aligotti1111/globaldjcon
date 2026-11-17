@@ -878,10 +878,11 @@ function SingleMonthView({
     const partialFrac = partialFill && isAvail && approvedCount > 0 && defaultBookingsPerDay > 0
       ? Math.min(1, approvedCount / defaultBookingsPerDay)
       : 0;
-    // Rendered as a clip-path triangle overlay (below) so the diagonal edge runs
-    // corner-to-corner regardless of the cell's width:height — a gradient angle
-    // looks crooked on a wide rectangle.
-    const partialPct = Math.round(partialFrac * 100);
+    // Rendered as a FIXED corner-to-corner half-triangle overlay (below) so the
+    // diagonal always runs cleanly from the top-right corner to the bottom-left
+    // corner. How full the day is shows through the red's intensity, not the
+    // triangle's size (scaling the size looks crooked on a wide rectangle).
+    const partialAlpha = partialFrac > 0 ? (0.3 + 0.35 * partialFrac).toFixed(2) : '0';
     const isLastRow =
       Math.floor((firstDay + d - 1) / 7) ===
       Math.floor((firstDay + daysInMonth - 1) / 7);
@@ -1038,8 +1039,8 @@ function SingleMonthView({
         {partialFrac > 0 && (
           <div style={{
             position: 'absolute', inset: 0, pointerEvents: 'none',
-            background: 'rgba(255,95,95,0.5)',
-            clipPath: `polygon(0 0, ${partialPct}% 0, 0 ${partialPct}%)`,
+            background: `rgba(255,95,95,${partialAlpha})`,
+            clipPath: 'polygon(0 0, 100% 0, 0 100%)',
           }} />
         )}
         <div className={numClasses.join(' ')}>{d}</div>
@@ -1198,7 +1199,7 @@ function RollingMonthsView({
       const miniPartialFrac = partialFill && isAvail && approvedCount > 0 && defaultBookingsPerDay > 0
         ? Math.min(1, approvedCount / defaultBookingsPerDay)
         : 0;
-      const miniPartialPct = Math.round(miniPartialFrac * 100);
+      const miniPartialAlpha = miniPartialFrac > 0 ? (0.3 + 0.35 * miniPartialFrac).toFixed(2) : '0';
       cells.push(
         <div
           key={key}
@@ -1210,8 +1211,8 @@ function RollingMonthsView({
           {miniPartialFrac > 0 && (
             <div style={{
               position: 'absolute', inset: 0, pointerEvents: 'none',
-              background: 'rgba(255,95,95,0.5)',
-              clipPath: `polygon(0 0, ${miniPartialPct}% 0, 0 ${miniPartialPct}%)`,
+              background: `rgba(255,95,95,${miniPartialAlpha})`,
+              clipPath: 'polygon(0 0, 100% 0, 0 100%)',
             }} />
           )}
           {d}
