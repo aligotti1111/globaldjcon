@@ -115,6 +115,10 @@ export interface BookingSettings {
   mob_booking_days?: MobileBookingDays;
   mob_booking_window?: number;      // default 24 — mobile DJs typically book further out
   mob_bookings_per_day?: number;    // default 1 — capacity per date
+  // When true, the public calendar fills a day's red proportionally to how many
+  // of that day's booking slots are taken (e.g. 1 of 3 = ~1/3 red). Off by
+  // default: a day shows no red until it's completely booked, then fully red.
+  mob_partial_fill?: boolean;
   mob_packages?: Record<string, MobilePackage[]>;  // 'general' | 'wedding' | 'mitzvah'
   mob_deposit_pct?: number;
   // Optional extras a host can add to ANY package at booking time (uplighting,
