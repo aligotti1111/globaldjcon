@@ -878,11 +878,11 @@ function SingleMonthView({
     const partialFrac = partialFill && isAvail && approvedCount > 0 && defaultBookingsPerDay > 0
       ? Math.min(1, approvedCount / defaultBookingsPerDay)
       : 0;
-    // Rendered as a FIXED corner-to-corner half-triangle overlay (below) so the
-    // diagonal always runs cleanly from the top-right corner to the bottom-left
-    // corner. How full the day is shows through the red's intensity, not the
-    // triangle's size (scaling the size looks crooked on a wide rectangle).
-    const partialAlpha = partialFrac > 0 ? (0.3 + 0.35 * partialFrac).toFixed(2) : '0';
+    // Proportional diagonal fill — matches the club/bar calendar exactly: a
+    // 135° gradient filling to the booked fraction (1 of 5 ≈ 20% red).
+    const partialBg = partialFrac > 0
+      ? `linear-gradient(135deg, #ff5f5f 0%, #ff5f5f ${Math.round(partialFrac * 100)}%, transparent ${Math.round(partialFrac * 100)}%, transparent 100%)`
+      : undefined;
     const isLastRow =
       Math.floor((firstDay + d - 1) / 7) ===
       Math.floor((firstDay + daysInMonth - 1) / 7);
@@ -1034,15 +1034,8 @@ function SingleMonthView({
         key={key}
         className={cellClasses.join(' ')}
         onClick={cellClickHandler}
-        style={{ position: 'relative', ...(cellClickHandler ? { cursor: 'pointer' } : {}) }}
+        style={{ ...(partialBg ? { background: partialBg } : {}), ...(cellClickHandler ? { cursor: 'pointer' } : {}) }}
       >
-        {partialFrac > 0 && (
-          <div style={{
-            position: 'absolute', inset: 0, pointerEvents: 'none',
-            background: `rgba(255,95,95,${partialAlpha})`,
-            clipPath: 'polygon(0 0, 100% 0, 0 100%)',
-          }} />
-        )}
         <div className={numClasses.join(' ')}>{d}</div>
         {inner}
       </div>
@@ -1199,22 +1192,17 @@ function RollingMonthsView({
       const miniPartialFrac = partialFill && isAvail && approvedCount > 0 && defaultBookingsPerDay > 0
         ? Math.min(1, approvedCount / defaultBookingsPerDay)
         : 0;
-      const miniPartialAlpha = miniPartialFrac > 0 ? (0.3 + 0.35 * miniPartialFrac).toFixed(2) : '0';
+      const miniPartialBg = miniPartialFrac > 0
+        ? `linear-gradient(135deg, #ff5f5f 0%, #ff5f5f ${Math.round(miniPartialFrac * 100)}%, transparent ${Math.round(miniPartialFrac * 100)}%, transparent 100%)`
+        : undefined;
       cells.push(
         <div
           key={key}
           className={cellClasses.join(' ')}
           onClick={onCellClick}
-          style={miniPartialFrac > 0 ? { position: 'relative' } : undefined}
+          style={miniPartialBg ? { background: miniPartialBg } : undefined}
           title={miniManualBooked ? 'Manually marked booked' : undefined}
         >
-          {miniPartialFrac > 0 && (
-            <div style={{
-              position: 'absolute', inset: 0, pointerEvents: 'none',
-              background: `rgba(255,95,95,${miniPartialAlpha})`,
-              clipPath: 'polygon(0 0, 100% 0, 0 100%)',
-            }} />
-          )}
           {d}
           {/* Public visitor: show "Book" label on available days so
               visitors can book directly from the 12-month grid. If this
