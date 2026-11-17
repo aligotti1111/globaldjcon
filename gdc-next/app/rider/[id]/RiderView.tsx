@@ -113,7 +113,7 @@ export default function RiderView({
 
         {isUpload ? (
           <div style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 14, padding: '1rem' }}>
-            <object data={pdfUrl!} type="application/pdf" width="100%" height="720" style={{ borderRadius: 10, border: 'none' }}>
+            <object data={`${pdfUrl!}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`} type="application/pdf" width="100%" height="1400" style={{ borderRadius: 10, border: 'none', display: 'block' }}>
               <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'rgba(255,255,255,.75)' }}>
                 Your browser can&rsquo;t display the PDF inline.
               </div>
@@ -121,11 +121,10 @@ export default function RiderView({
             <div style={{ textAlign: 'center', marginTop: '1.2rem' }}>
               <a
                 href={pdfUrl!}
-                target="_blank"
-                rel="noreferrer"
+                download
                 style={{ display: 'inline-block', background: 'var(--neon,#00e0a4)', color: '#06231b', borderRadius: 8, padding: '.7rem 1.4rem', fontWeight: 700, fontSize: '.9rem', textDecoration: 'none' }}
               >
-                Open / Download PDF
+                Download PDF
               </a>
             </div>
           </div>
