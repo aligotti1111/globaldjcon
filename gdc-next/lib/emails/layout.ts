@@ -83,6 +83,7 @@ export function bookingInfoBox(opts: {
   isWedding?: boolean;          // relabels the Time row as "Reception Time"
   ceremonyStart?: string | null; // weddings — pre-trimmed "HH:MM", shown as a row
   cocktailStart?: string | null; // weddings — pre-trimmed "HH:MM", shown as a row
+  reference?: string;            // booking reference code, shown as the last row
   message?: string;
 }): string {
   const dateStr = opts.date ? fmtDate(opts.date) : '';
@@ -103,6 +104,7 @@ export function bookingInfoBox(opts: {
     const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(opts.venueAddress)}`;
     rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Address:</strong> <a href="${mapsHref}" style="color:#0a7d5a;text-decoration:underline;">${escHtml(opts.venueAddress)}</a></p>`);
   }
+  if (opts.reference) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Reference:</strong> ${escHtml(opts.reference)}</p>`);
   // Package goes under the Address (matches the request/confirmation card order).
   if (opts.packageTitle) rows.push(`<p style="margin:0 0 8px;color:#666;font-size:13px;"><strong style="color:#1a1a2e;">Package:</strong> ${escHtml(opts.packageTitle)}${opts.packageDetails ? `<br><span style="color:#999;font-size:12px;line-height:1.5;">${opts.packageDetails}</span>` : ''}</p>`);
   {
