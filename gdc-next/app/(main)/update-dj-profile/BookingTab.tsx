@@ -720,8 +720,8 @@ export default function BookingTab({
                             }}>
                               <div style={{
                                 position: 'absolute', inset: 0, pointerEvents: 'none',
-                                background: 'rgba(255,95,95,0.55)',
-                                clipPath: `polygon(0 0, ${(ex.taken / ex.total) * 100}% 0, 0 ${(ex.taken / ex.total) * 100}%)`,
+                                background: `rgba(255,95,95,${(0.3 + 0.35 * (ex.taken / ex.total)).toFixed(2)})`,
+                                clipPath: 'polygon(0 0, 100% 0, 0 100%)',
                               }} />
                               <span style={{ position: 'relative' }}>{15 + i}</span>
                             </div>
