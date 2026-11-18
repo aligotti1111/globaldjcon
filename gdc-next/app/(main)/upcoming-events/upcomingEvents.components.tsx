@@ -661,7 +661,7 @@ export function EventRow({
                     className={dj.detailValue}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: 'transparent', color: 'inherit', border: '1px solid rgba(255,255,255,.18)', borderRadius: 8, padding: '7px 14px', fontWeight: 600 }}
                   >
-                    ✉ Message through Global DJ Connect
+                    ✉ Message DJ
                   </button>
                 </div>
               </div>
