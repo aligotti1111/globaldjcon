@@ -311,11 +311,23 @@ export async function POST(req: Request) {
     }
   }
 
+  // The DJ's public social / web links (as shown in their profile hero), so the
+  // bot can hand over the ACTUAL link when a booker asks for one, instead of
+  // telling them to go look on the profile.
+  const socialPairs: [string, unknown][] = [
+    ['Website', rp.website], ['Instagram', rp.instagram], ['Facebook', rp.facebook],
+    ['TikTok', rp.tiktok], ['Twitch', rp.twitch], ['SoundCloud', rp.soundcloud],
+  ];
+  const socials = socialPairs
+    .map(([label, v]) => { const t = String(v ?? '').trim(); return t ? `${label}: ${t}` : ''; })
+    .filter(Boolean)
+    .join('\n');
+
   const system = buildBotSystemPrompt(
     row.name || 'this DJ', djType, range, faqText(row.faqs),
     row.booking_bot_instructions || '', row.phone || '',
     { depositPct, requireContract, equipment, packages, exclusions, travel, payments, windowMonths, todayLabel, cutoffLabel, blockedDates }, existingBooking, about,
-    row.booking_bot_site_text || '',
+    row.booking_bot_site_text || '', socials,
   );
 
   let reply = '';
