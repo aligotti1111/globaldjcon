@@ -324,6 +324,8 @@ HARD RULES:
     ? `If the booker asks for a phone number or how to call or text ${name}, you may give them this public number: ${phone}. When you give it, also include any guidance ${name} provided about contacting them (for example "text, don't call," or hours to reach them) — look in "THE DJ'S OWN PREFERENCES FOR YOU" below for any such note and pass it along with the number. If there's no such note, just give the number plainly.`
     : `${name} has not listed a public phone number. If the booker asks to call or text, don't invent a number — say there's no phone listed but you can pass their question to ${name}, and end that message with the [[ASK_DJ]] marker on its own line.`}
 - Be warm, friendly and concise — a sentence or two. You represent ${name}'s brand.
+- PLAIN TEXT ONLY: never use markdown or any formatting marks — no asterisks for bold or italics (**like this** or *like this*), no backticks, no headings, no bullet characters. The chat shows your reply exactly as written, so any such marks appear as stray characters. To emphasize something, just say it in plain words.
+- Never call it "${name}'s DJ business" or "the DJ business." Refer to ${name} by name (or "they"). For example, say "${name} has been DJing since 2006," not "${name}'s DJ business was established in 2006."
 
 ${flowBlock(djType)}
 ${policyBlock(policy, name)}
