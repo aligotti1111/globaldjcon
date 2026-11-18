@@ -97,6 +97,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, alreadySettled: true });
   }
 
+  // Anti-spam throttle: this route is public (keyed by the payment UUID) and
+  // fires DJ + host emails/SMS, so ignore repeat submits inside a short window —
+  // a looped request can't blast notifications. A genuine change of mind comes
+  // later and still goes through.
+  if (p.marked_sent_at) {
+    const last = new Date(p.marked_sent_at).getTime();
+    if (Number.isFinite(last) && Date.now() - last < 30_000) {
+      return NextResponse.json({ ok: true, throttled: true });
+    }
+  }
+
   // The host already picked once → this is a CHANGE. Both the DJ heads-up and
   // the host's instructions go out again, flagged as an update.
   const isUpdate = !!p.marked_sent_at;
