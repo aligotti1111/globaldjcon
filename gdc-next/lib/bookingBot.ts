@@ -289,7 +289,15 @@ ${txt}
 """`;
 }
 
-export function buildBotSystemPrompt(djName: string, djType: string, range: PriceRange, faq: string, djInstructions = '', djPhone = '', policy?: BookingPolicy, existingBooking = '', about = '', siteText = ''): string {
+// The DJ's public social / web links, rendered so the bot can share the actual
+// link when asked. Empty string when the DJ listed none.
+function socialsBlock(raw: string, name: string): string {
+  const s = (raw || '').trim();
+  if (!s) return '';
+  return `\n${name}'S PUBLIC LINKS (from their profile — these are safe to share):\n${s}\nWhen the booker asks for ${name}'s Instagram, TikTok, SoundCloud, Facebook, Twitch, or website (or "where can I find you / your socials / your music"), give the ACTUAL link(s) from this list — don't just tell them to look on the profile. If they ask for a specific platform that's NOT in this list, say ${name} doesn't have that one listed, and share any other links above that fit what they're after (e.g. offer their music link when they ask for music).`;
+}
+
+export function buildBotSystemPrompt(djName: string, djType: string, range: PriceRange, faq: string, djInstructions = '', djPhone = '', policy?: BookingPolicy, existingBooking = '', about = '', siteText = '', socials = ''): string {
   const name = (djName || '').trim() || 'this DJ';
   const typeLabel = djType === 'club' ? 'club/bar' : 'mobile';
   const phone = (djPhone || '').trim();
@@ -323,6 +331,7 @@ HARD RULES:
 - PHONE / CONTACT: ${phone
     ? `If the booker asks for a phone number or how to call or text ${name}, you may give them this public number: ${phone}. When you give it, also include any guidance ${name} provided about contacting them (for example "text, don't call," or hours to reach them) — look in "THE DJ'S OWN PREFERENCES FOR YOU" below for any such note and pass it along with the number. If there's no such note, just give the number plainly.`
     : `${name} has not listed a public phone number. If the booker asks to call or text, don't invent a number — say there's no phone listed but you can pass their question to ${name}, and end that message with the [[ASK_DJ]] marker on its own line.`}
+- START-BOOKING SIGNAL: there's a "Start my booking request" button the app shows ONLY when you emit the marker [[START_BOOKING]]. Emit it — on its own line at the very END of your message — once the chat is genuinely about booking ${name}: the booker has shown booking intent AND given at least their event type (wedding, birthday, corporate, etc.) OR an event date. Once you've emitted it once, you may include it again on later replies. Do NOT emit it for someone just browsing or asking general questions (price curiosity, "what's your Instagram", "how long have you DJ'd") before they've shown they want to book this event — no event type and no date means no [[START_BOOKING]]. Never mention the marker itself.
 - Be warm, friendly and concise — a sentence or two. You represent ${name}'s brand.
 - PLAIN TEXT ONLY: never use markdown or any formatting marks — no asterisks for bold or italics (**like this** or *like this*), no backticks, no headings, no bullet characters. The chat shows your reply exactly as written, so any such marks appear as stray characters. To emphasize something, just say it in plain words.
 - Never call it "${name}'s DJ business" or "the DJ business." Refer to ${name} by name (or "they"). For example, say "${name} has been DJing since 2006," not "${name}'s DJ business was established in 2006."
@@ -330,6 +339,7 @@ HARD RULES:
 ${flowBlock(djType)}
 ${policyBlock(policy, name)}
 ${aboutBlock(about, name)}
+${socialsBlock(socials, name)}
 ${existingBookingBlock(existingBooking, name)}
 
 ${HOST_FAQ}
