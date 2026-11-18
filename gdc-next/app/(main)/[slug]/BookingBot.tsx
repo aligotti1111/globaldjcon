@@ -14,6 +14,42 @@ import { saveBookingPrefill } from '@/lib/bookingPrefill';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
+// A URL rendered as a tap-to-copy chip — clicking copies the link to the
+// clipboard and briefly confirms, instead of navigating the booker away.
+function CopyLink({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
+      }}
+      title="Copy link"
+      style={{ background: 'transparent', border: 'none', padding: 0, margin: 0, font: 'inherit', color: 'var(--neon,#00e0a4)', textDecoration: 'underline', cursor: 'pointer', wordBreak: 'break-all', display: 'inline' }}
+    >
+      {url}{copied ? ' ✓ copied' : ' ⧉'}
+    </button>
+  );
+}
+
+// Replace bare URLs in a message with a tap-to-copy chip. Trailing sentence
+// punctuation is kept out of the copied URL.
+function linkify(s: string): React.ReactNode {
+  const parts = s.split(/(https?:\/\/[^\s]+)/g);
+  return parts.map((part, i) => {
+    if (!/^https?:\/\//.test(part)) return part;
+    const m = part.match(/^(.*?)([.,!?)]*)$/s);
+    const url = m ? m[1] : part;
+    const tail = m ? m[2] : '';
+    return (
+      <span key={i}>
+        <CopyLink url={url} />
+        {tail}
+      </span>
+    );
+  });
+}
+
 // One saved conversation PER DJ (keyed by slug) so a booker who browses from
 // profile to profile keeps each chat separately and can come back to reread.
 // sessionStorage: survives close/reopen + navigation, clears when the tab closes.
@@ -246,7 +282,7 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
               }
               return (
                 <div key={i}>
-                  <div className={`${styles.msg} ${m.role === 'user' ? styles.user : styles.bot}`}>{text}</div>
+                  <div className={`${styles.msg} ${m.role === 'user' ? styles.user : styles.bot}`}>{linkify(text)}</div>
                   {askDj && (sentMsgs.has(i) ? (
                     <span className={styles.sentNote}>✓ Your message was sent to {name} — they&apos;ll get back to you directly.</span>
                   ) : (
