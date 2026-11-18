@@ -285,16 +285,23 @@ export async function POST(req: Request) {
     // inbound webhook resolves the token). Falls back to the normal Reply-To when
     // there's no thread or inbound isn't set up.
     let inboxReplyTo: string = REPLY_TO;
-    const threadId = typeof body.threadId === 'string' && body.threadId ? body.threadId : null;
+    // SECURITY: threadId is interpolated into a PostgREST .or() filter below, so
+    // only accept a well-formed UUID — a non-UUID could widen the filter.
+    const rawThreadId = typeof body.threadId === 'string' ? body.threadId.trim() : '';
+    const threadId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawThreadId)
+      ? rawThreadId
+      : null;
+
+    // SECURITY: the participant gate below is computed ONCE and governs BOTH the
+    // reply token AND the thread preview. The recipient must belong to the
+    // thread, and a NON-internal caller must too. Without this, an authed user
+    // could pass a threadId they're not part of (with recipientUserId set to
+    // their own account) and read someone else's conversation in the email, or
+    // have the recipient's reply posted into a thread they don't belong to.
+    // Internal callers (the inbound-email webhook) already validated participants.
+    let threadParticipantsOk = false;
     if (threadId) {
       try {
-        // SECURITY: only mint a reply token when the people involved actually
-        // belong to the thread. Without this, an authed user could pass a
-        // threadId they're not part of and have the recipient's email reply get
-        // posted into someone else's conversation. We load the thread
-        // (parent + replies) and require the recipient to be a participant, and
-        // for a NON-internal caller, that the caller is too. Internal callers
-        // (the inbound webhook) already validated participants on their side.
         const adminC = createAdminClient();
         const { data: tRows } = await adminC
           .from('messages')
@@ -307,19 +314,21 @@ export async function POST(req: Request) {
         }
         const recipientOk = parts.has(recipientUserId);
         const callerOk = isInternal || (!!authUser && parts.has(authUser.id));
-        if (recipientOk && callerOk) {
+        threadParticipantsOk = recipientOk && callerOk;
+        if (threadParticipantsOk) {
           const token = await getOrCreateReplyToken(adminC, threadId, recipientUserId);
           const addr = token ? replyAddressFor(token) : null;
           if (addr) inboxReplyTo = addr;
         }
-      } catch { /* keep the default Reply-To */ }
+      } catch { /* keep the default Reply-To; leave participants un-verified */ }
     }
 
     // Pull the last few messages of the thread so the email shows the recent
-    // back-and-forth, not just the newest line. Falls back to the single new
-    // message when there's no thread (or the lookup fails).
+    // back-and-forth — ONLY when the caller + recipient are verified participants
+    // (see the gate above). Otherwise fall back to just the new message, so the
+    // notification can never leak a conversation the caller isn't part of.
     let threadMessages: { fromName: string; text: string; at?: string }[] = [{ fromName: senderName || '', text: message }];
-    if (threadId) {
+    if (threadId && threadParticipantsOk) {
       try {
         const adminT = createAdminClient();
         const { data: convo } = await adminT
