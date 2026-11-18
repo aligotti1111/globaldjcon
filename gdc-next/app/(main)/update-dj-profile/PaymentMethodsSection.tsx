@@ -1135,7 +1135,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           className="gdc-pay-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: '200px 1fr',
+            gridTemplateColumns: '76px 1fr',
             gap: '1rem',
             margin: '1rem 0 .25rem',
             alignItems: 'start',
@@ -1157,12 +1157,14 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 type="button"
                 onClick={() => { if (!blocked) { setShowReminders(false); setOpenTile(open ? null : k); } }}
                 disabled={blocked}
-                title={blocked ? `${(allowedCur as string[]).join('/')} only — not available for ${rateCurrency}` : undefined}
+                // Logo-only list to save space — the brand mark is the label.
+                // Full name shows on hover; a blocked rail says why instead.
+                title={blocked ? `${TILE_LABEL[k]} — ${(allowedCur as string[]).join('/')} only, not available for ${rateCurrency}` : TILE_LABEL[k]}
                 style={{
                   position: 'relative',
-                  display: 'flex', alignItems: 'center', gap: '.55rem',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                   width: '100%',
-                  padding: '.5rem .6rem',
+                  padding: '.5rem',
                   borderRadius: 8,
                   // The open row is highlighted (teal-tinted fill + teal border);
                   // every other row is a plain list item on the panel background.
@@ -1178,51 +1180,30 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   transition: 'background .12s ease, border-color .12s ease',
                 }}
               >
-                {/* Brand mark, left-aligned in a fixed-width cell so the labels
-                    line up. Wide marks (Card's four networks, the Venmo/PayPal
-                    glyphs) are capped so they don't overflow the compact row. */}
+                {/* Logo only — centered. Wide marks (Card's four networks, the
+                    Venmo/PayPal glyphs) are capped so they don't overflow. */}
                 <span
                   style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
-                    width: 46, minWidth: 46, height: 26, flexShrink: 0, overflow: 'hidden',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    height: 28, flexShrink: 0, overflow: 'hidden',
                     filter: blocked ? 'grayscale(1)' : undefined,
                   }}
                 >
-                  {TILE_MARK[k]?.({ size: k === 'card' ? 9 : Math.min(TILE_MARK_SIZE[k] ?? DEFAULT_MARK_SIZE, 24) })}
+                  {TILE_MARK[k]?.({ size: k === 'card' ? 10 : Math.min(TILE_MARK_SIZE[k] ?? DEFAULT_MARK_SIZE, 26) })}
                 </span>
-                <span style={{ flex: 1, minWidth: 0, fontSize: '.8rem', fontWeight: 700, color: blocked ? '#8a8aa0' : '#eef0f5', lineHeight: 1.25 }}>
-                  {TILE_LABEL[k]}
-                  {k === 'card' && (
-                    <span style={{ display: 'block', fontSize: '.55rem', fontWeight: 600, color: '#8a8aa0', lineHeight: 1.2, letterSpacing: '.02em' }}>
-                      via Stripe
-                    </span>
-                  )}
-                  {/* Venmo rides on a connected PayPal — show "via PayPal Connect"
-                      only when that's how it's live; manual Venmo shows nothing. */}
-                  {k === 'venmo' && paypalReady && (
-                    <span style={{ display: 'block', fontSize: '.52rem', fontWeight: 600, color: '#8a8aa0', lineHeight: 1.2, letterSpacing: '.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      via PayPal Connect
-                    </span>
-                  )}
-                  {blocked && (
-                    <span style={{ display: 'block', fontSize: '.55rem', fontWeight: 700, color: '#f5a623', lineHeight: 1.2, letterSpacing: '.02em' }}>
-                      {(allowedCur as string[]).join('/')} only
-                    </span>
-                  )}
-                </span>
-                {/* Small green circular check on the right when the rail is live
-                    (active) — what a client can actually use right now. Hidden on
-                    a currency-blocked rail. */}
+                {/* Small green check badge in the corner when the rail is live
+                    (active). Hidden on a currency-blocked rail. */}
                 {live && !blocked && (
                   <span
                     aria-label="Active"
                     style={{
-                      flexShrink: 0, width: 16, height: 16,
+                      position: 'absolute', top: 3, right: 3,
+                      width: 14, height: 14,
                       borderRadius: '50%', background: '#22e3ad',
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     }}
                   >
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#042" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#042" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </span>
@@ -1245,21 +1226,19 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
               <button
                 type="button"
                 onClick={() => { setOpenTile(null); setShowReminders(true); }}
+                title="Payment Reminders"
                 style={{
-                  display: 'flex', alignItems: 'center', gap: '.55rem', width: '100%',
-                  padding: '.5rem .6rem', borderRadius: 8, textAlign: 'left', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%',
+                  padding: '.5rem', borderRadius: 8, cursor: 'pointer',
                   border: showReminders ? '1px solid rgba(34,227,173,.4)' : '1px solid rgba(255,255,255,.08)',
                   background: showReminders ? 'rgba(34,227,173,.1)' : 'transparent',
                   transition: 'background .12s ease, border-color .12s ease',
                 }}
               >
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, minWidth: 26, height: 26, flexShrink: 0, color: '#eaa94a' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 28, flexShrink: 0, color: '#eaa94a' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
                   </svg>
-                </span>
-                <span style={{ flex: 1, minWidth: 0, fontSize: '.8rem', fontWeight: 700, color: '#eef0f5', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  Payment Reminders
                 </span>
               </button>
             </>
