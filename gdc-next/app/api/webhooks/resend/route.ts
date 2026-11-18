@@ -55,19 +55,17 @@ export async function GET() {
 export async function POST(req: Request) {
   const raw = await req.text();
 
-  // Signature is verified ONLY WHEN A SECRET IS CONFIGURED. With
-  // RESEND_WEBHOOK_SECRET set, a bad/missing signature is rejected. Without it,
-  // the event is processed (original behavior) so email-open tracking keeps
-  // working out of the box. This only writes bookings.email_opens (a soft
-  // "likely opened" hint), so the unauthenticated path is low-risk — but set
-  // the secret before launch to close it.
+  // Signature verification — FAIL CLOSED. RESEND_WEBHOOK_SECRET must be set and
+  // the Svix signature must verify; otherwise we refuse the event. (This only
+  // writes a soft "likely opened" hint, but an unauthenticated webhook is still
+  // a forgeable write, so we don't process it without a valid signature.)
   const secret = process.env.RESEND_WEBHOOK_SECRET;
-  if (secret) {
-    if (!verifySignature(secret, req.headers, raw)) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-    }
-  } else {
-    console.warn('[webhooks/resend] RESEND_WEBHOOK_SECRET not set — processing webhook unverified. Set the secret before launch.');
+  if (!secret) {
+    console.error('[webhooks/resend] RESEND_WEBHOOK_SECRET not set — refusing webhook.');
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 });
+  }
+  if (!verifySignature(secret, req.headers, raw)) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
   let evt: { type?: string; created_at?: string; data?: { created_at?: string; tags?: unknown } };
