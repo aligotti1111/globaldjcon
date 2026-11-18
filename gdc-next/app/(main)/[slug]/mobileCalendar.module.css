@@ -408,7 +408,9 @@
   cursor: pointer;
 }
 .cellAvail:hover {
-  background: var(--neon);
+  /* !important so it overrides the inline diagonal partial-fill gradient on
+     partially-booked days — they're still bookable, so they light up neon too. */
+  background: var(--neon) !important;
   border-color: var(--neon);
 }
 /* Day number stays readable on the neon background */
