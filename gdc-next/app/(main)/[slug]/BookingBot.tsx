@@ -237,9 +237,14 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
               // The bot appends [[REQUEST_CALL]] (only when the DJ said they're
               // open to it) so the booker can message a call/Zoom request.
               const reqCall = m.role === 'assistant' && m.content.includes('[[REQUEST_CALL]]');
-              const text = (askDj || reqCall)
+              let text = (askDj || reqCall)
                 ? m.content.replace(/\[\[ASK_DJ\]\]/g, '').replace(/\[\[REQUEST_CALL\]\]/g, '').trim()
                 : m.content;
+              // Safety net: the bot is told to write plain text, but strip any
+              // stray markdown emphasis so **bold**/__bold__ never shows literally.
+              if (m.role === 'assistant') {
+                text = text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1');
+              }
               return (
                 <div key={i}>
                   <div className={`${styles.msg} ${m.role === 'user' ? styles.user : styles.bot}`}>{text}</div>
