@@ -13,11 +13,20 @@
 // "?secret=..." to the webhook URL (or an X-Webhook-Secret header) to lock it.
 
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { Resend } from 'resend';
 import { createAdminClient, resolveUserEmail } from '@/lib/supabase/admin';
 import { getDocuseal } from '@/lib/docuseal';
 import { bookingProgressBox } from '@/lib/bookingProgressBox';
 import { referenceCode } from '@/lib/paymentMethods';
+
+// Constant-time string compare — avoids leaking the secret via timing.
+function secretsEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 export const runtime = 'nodejs';
 export const maxDuration = 26;
@@ -82,24 +91,21 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  // Shared-secret check — VERIFY ONLY WHEN A SECRET IS CONFIGURED. When
-  // DOCUSEAL_WEBHOOK_SECRET is set, require a matching ?secret= / X-Webhook-Secret
-  // and reject mismatches. When it's NOT set, process the webhook (the original
-  // behavior) so a signed contract still updates the booking and emails both
-  // parties out of the box.
-  //
-  // TO LOCK THIS DOWN: set DOCUSEAL_WEBHOOK_SECRET in Netlify AND add the same
-  // value as ?secret=... (or an X-Webhook-Secret header) on the DocuSeal webhook
-  // URL. Until then a forged completed/declined event could flip contract status
-  // — acceptable only because there are no live users yet; configure the secret
-  // before launch.
+  // Shared-secret check — FAIL CLOSED. A forged completed/declined event can
+  // flip a booking's contract status and email both parties, so we never
+  // process this webhook unauthenticated. DOCUSEAL_WEBHOOK_SECRET must be set,
+  // and the DocuSeal webhook must send a matching X-Webhook-Secret header (or
+  // ?secret=...). The compare is constant-time. (Header is preferred — a query
+  // param can leak into access logs/referrers.)
   const secret = process.env.DOCUSEAL_WEBHOOK_SECRET;
-  if (secret) {
+  if (!secret) {
+    console.error('[contracts/completed] DOCUSEAL_WEBHOOK_SECRET not set — refusing to process webhook.');
+    return NextResponse.json({ ok: false, error: 'Webhook not configured' }, { status: 503 });
+  }
+  {
     const url = new URL(req.url);
-    const provided = req.headers.get('x-webhook-secret') || url.searchParams.get('secret');
-    if (provided !== secret) return NextResponse.json({ ok: false }, { status: 401 });
-  } else {
-    console.warn('[contracts/completed] DOCUSEAL_WEBHOOK_SECRET not set — processing webhook unauthenticated. Set the secret before launch.');
+    const provided = req.headers.get('x-webhook-secret') || url.searchParams.get('secret') || '';
+    if (!secretsEqual(provided, secret)) return NextResponse.json({ ok: false }, { status: 401 });
   }
 
   let payload: Record<string, unknown>;
