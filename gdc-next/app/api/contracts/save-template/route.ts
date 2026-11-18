@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getActingContext, canSendContracts } from '@/lib/acting';
 import { uniqueContractName } from '@/lib/contractName';
+import { getDocuseal } from '@/lib/docuseal';
 
 export const runtime = 'nodejs';
 
@@ -35,8 +36,38 @@ export async function POST(req: Request) {
   const contractId = typeof body.contractId === 'string' && body.contractId ? body.contractId : null;
   if (!templateId) return NextResponse.json({ error: 'Missing template id' }, { status: 400 });
 
+  const admin = createAdminClient();
+
+  // SECURITY: the client supplies the DocuSeal template id, and all templates
+  // live in ONE DocuSeal account — so without a check a DJ could point their
+  // contract row at ANOTHER DJ's template id and then open/send it via the
+  // builder. Reject any template that provably belongs to someone else:
+  //   1. Our templates are created with external_id `dj_<djId>_…` — if it
+  //      encodes a dj id, it must be ours.
+  //   2. Regardless, the id must not already be linked to a DIFFERENT dj in our
+  //      contracts table (covers uploaded/legacy templates with no external_id).
   try {
-    const admin = createAdminClient();
+    const tmpl = await getDocuseal().getTemplate(Number(templateId)) as unknown as { external_id?: string | null };
+    const ext = String(tmpl?.external_id || '');
+    const m = ext.match(/^dj_([0-9a-fA-F-]+)_/);
+    if (m && m[1] !== acting.djId) {
+      return NextResponse.json({ error: 'That template belongs to another account.' }, { status: 403 });
+    }
+  } catch { /* template not found / API hiccup — fall through to the DB check */ }
+  try {
+    const { data: otherOwner } = await admin
+      .from('contracts')
+      .select('dj_id')
+      .eq('docuseal_template_id', templateId)
+      .neq('dj_id', acting.djId)
+      .limit(1)
+      .maybeSingle();
+    if (otherOwner) {
+      return NextResponse.json({ error: 'That template belongs to another account.' }, { status: 403 });
+    }
+  } catch { /* non-fatal: the external_id check above is the primary guard */ }
+
+  try {
     let savedId = contractId;
     if (contractId) {
       // Editing anchor tags must NOT change what kind of contract this is. A
