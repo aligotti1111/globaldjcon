@@ -234,7 +234,12 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
               // The bot appends [[ASK_DJ]] when it can't answer a question about
               // the DJ. Strip it from the text and show a "Message the DJ" button.
               const askDj = m.role === 'assistant' && m.content.includes('[[ASK_DJ]]');
-              const text = askDj ? m.content.replace(/\[\[ASK_DJ\]\]/g, '').trim() : m.content;
+              // The bot appends [[REQUEST_CALL]] (only when the DJ said they're
+              // open to it) so the booker can message a call/Zoom request.
+              const reqCall = m.role === 'assistant' && m.content.includes('[[REQUEST_CALL]]');
+              const text = (askDj || reqCall)
+                ? m.content.replace(/\[\[ASK_DJ\]\]/g, '').replace(/\[\[REQUEST_CALL\]\]/g, '').trim()
+                : m.content;
               return (
                 <div key={i}>
                   <div className={`${styles.msg} ${m.role === 'user' ? styles.user : styles.bot}`}>{text}</div>
@@ -261,6 +266,27 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
                       }}
                     >
                       Message {name} →
+                    </button>
+                  ))}
+                  {/* Call/Zoom request — only shown when the DJ opted in and the
+                      bot emitted [[REQUEST_CALL]]. Opens the same compose box,
+                      prefilled as a call/Zoom request. */}
+                  {reqCall && (sentMsgs.has(i) ? (
+                    <span className={styles.sentNote}>✓ Your request was sent to {name} — they&apos;ll reach out to set up a call.</span>
+                  ) : (
+                    <button
+                      className={styles.cta}
+                      onClick={() => {
+                        setOpen(false);
+                        const subject = `Call / Zoom request before booking ${name}`;
+                        const body = [
+                          `I'd like to set up a quick call or Zoom to talk through my event before booking.`,
+                          `(Requested through your booking assistant on your profile.)`,
+                        ].join('\n\n');
+                        window.dispatchEvent(new CustomEvent('gdc:open-compose', { detail: { slug, subject, body, askId: i } }));
+                      }}
+                    >
+                      Request a call or Zoom →
                     </button>
                   ))}
                   {/* Hand-off link, anchored to this message so it scrolls with
