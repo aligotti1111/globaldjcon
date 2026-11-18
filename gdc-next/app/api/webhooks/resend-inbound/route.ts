@@ -136,13 +136,15 @@ function isAutomated(headers: AnyObj, from: string): boolean {
 export async function POST(req: Request) {
   const raw = await req.text();
 
+  // FAIL CLOSED — inbound email posts messages into threads, so we never
+  // process it without a valid signature.
   const secret = process.env.RESEND_INBOUND_SECRET;
-  if (secret) {
-    if (!verifySignature(secret, req.headers, raw)) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-    }
-  } else {
-    console.warn('[resend-inbound] RESEND_INBOUND_SECRET not set — processing unverified. Set it before launch.');
+  if (!secret) {
+    console.error('[resend-inbound] RESEND_INBOUND_SECRET not set — refusing webhook.');
+    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 });
+  }
+  if (!verifySignature(secret, req.headers, raw)) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
   let evt: AnyObj;
