@@ -86,11 +86,34 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
-  // If user_id wasn't provided (resend case), look it up by email
-  if (!user_id) {
+  // SECURITY (account-takeover prevention): the verification link logs whoever
+  // opens it in as the token's user_id, and the link is delivered to `email`.
+  // So the token MUST bind only to the account that actually OWNS `email` — a
+  // client-supplied user_id for a *different* address would let an attacker
+  // mint a login for someone else and have it mailed to an address they
+  // control. We therefore always reconcile user_id against the real auth email.
+  if (user_id) {
+    // Fresh-signup path: the claimed account must actually own this email.
     try {
-      // Supabase admin.listUsers can paginate; we use email filter via the
-      // dedicated method when available, otherwise fall back to a small list.
+      const { data, error } = await admin.auth.admin.getUserById(user_id);
+      if (error) throw error;
+      const acctEmail = (data?.user?.email || '').toLowerCase();
+      if (!acctEmail || acctEmail !== email.toLowerCase()) {
+        return NextResponse.json(
+          { error: 'Email does not match this account.' },
+          { status: 403 }
+        );
+      }
+    } catch (e) {
+      console.error('[signup-send-verification] account verify failed', e);
+      return NextResponse.json(
+        { error: 'Could not verify the account. Please try again.' },
+        { status: 500 }
+      );
+    }
+  } else {
+    // Resend path: no user_id supplied — resolve it from the email itself.
+    try {
       const { data, error } = await admin.auth.admin.listUsers({
         page: 1,
         perPage: 200,
