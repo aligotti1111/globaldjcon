@@ -152,19 +152,16 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
-  // How many times the visitor has spoken — gate the hand-off button until
-  // there's something worth pre-filling.
-  const userTurns = messages.filter((m) => m.role === 'user').length;
-
-  // Anchor the "Start my booking request" link to the point in the conversation
-  // where it first became available, so it lives IN the message flow and scrolls
-  // up as the chat continues — instead of staying pinned at the bottom.
+  // The "Start my booking request" button appears only once the chat is actually
+  // about booking — the bot emits [[START_BOOKING]] when the booker has shown
+  // intent and given an event type or date. Anchor the button to the FIRST
+  // message carrying that marker so it lives in the flow and scrolls with it.
   const [startAnchor, setStartAnchor] = useState<number | null>(null);
   useEffect(() => {
-    if (startAnchor === null && !locked && userTurns >= 2 && messages.length > 0) {
-      setStartAnchor(messages.length - 1);
-    }
-  }, [startAnchor, locked, userTurns, messages.length]);
+    if (startAnchor !== null || locked) return;
+    const idx = messages.findIndex((m) => m.role === 'assistant' && m.content.includes('[[START_BOOKING]]'));
+    if (idx >= 0) setStartAnchor(idx);
+  }, [startAnchor, locked, messages]);
   // A new DJ's chat resets the anchor.
   useEffect(() => { setStartAnchor(null); }, [slug]);
 
@@ -237,9 +234,11 @@ export default function BookingBot({ slug, djName }: { slug: string; djName: str
               // The bot appends [[REQUEST_CALL]] (only when the DJ said they're
               // open to it) so the booker can message a call/Zoom request.
               const reqCall = m.role === 'assistant' && m.content.includes('[[REQUEST_CALL]]');
-              let text = (askDj || reqCall)
-                ? m.content.replace(/\[\[ASK_DJ\]\]/g, '').replace(/\[\[REQUEST_CALL\]\]/g, '').trim()
-                : m.content;
+              let text = m.content
+                .replace(/\[\[ASK_DJ\]\]/g, '')
+                .replace(/\[\[REQUEST_CALL\]\]/g, '')
+                .replace(/\[\[START_BOOKING\]\]/g, '')
+                .trim();
               // Safety net: the bot is told to write plain text, but strip any
               // stray markdown emphasis so **bold**/__bold__ never shows literally.
               if (m.role === 'assistant') {
