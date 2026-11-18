@@ -451,18 +451,20 @@
 .cellOpen:hover .cellNum {
   color: #050507;
 }
-/* Partially-booked days keep .cellOpen for the Book interaction but
-   their inline diagonal fill stays on hover — keep the day number
-   white so it doesn't vanish against the red/dark gradient. */
-.cellPartial:hover .cellNum {
-  color: var(--white);
-}
+/* Partially-booked days are still bookable, so on hover they light up fully
+   neon like an open day. The inline diagonal fill is an inline style, so we
+   override it with !important and switch the day number to dark. */
 .cellPartial:hover {
+  background: var(--neon) !important;
   border-color: var(--neon);
+}
+.cellPartial:hover .cellNum {
+  color: #050507;
 }
 /* On hover, only the pill's frame turns black — the neon fill and dark
    text stay, so the pill reads consistently on both dark and neon cells. */
-.cellOpen:hover .bookBadge {
+.cellOpen:hover .bookBadge,
+.cellPartial:hover .bookBadge {
   background: var(--neon);
   color: #050507;
   border-color: #000000;
