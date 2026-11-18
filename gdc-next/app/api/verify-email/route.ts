@@ -388,9 +388,13 @@ export async function GET(request: Request) {
   // ── Already-used token: treat as success but DON'T re-stamp verified_at ─
   // User clicked the link twice. Email is already verified — don't refresh
   // the timestamp (would re-trigger the banner unexpectedly).
+  // SECURITY: do NOT re-mint an auto-login magic link here. A verification
+  // link is single-use for the SESSION it grants — otherwise a leaked,
+  // forwarded, or already-consumed link would be a permanent "log me in as
+  // this user" generator. Send a PLAIN redirect; the user signs in normally.
   if (tokenRow.used_at) {
-    const finalUrl = await buildFinalRedirect(tokenRow.user_id);
-    return NextResponse.redirect(finalUrl, 302);
+    const { role } = await lookupUserDetails(tokenRow.user_id);
+    return NextResponse.redirect(`${origin}${destinationPathForRole(role)}`, 302);
   }
 
   if (new Date(tokenRow.expires_at) < new Date()) {
