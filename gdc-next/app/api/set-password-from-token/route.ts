@@ -97,7 +97,29 @@ export async function POST(request: Request) {
     );
   }
 
-  // Step 2: set the password on the auth user (auto-confirm so they can sign in)
+  // Step 2: ATOMICALLY claim the token (compare-and-set on used_at IS NULL)
+  // BEFORE setting the password. The earlier used_at check is a fast path; this
+  // is the real guard — two concurrent/replayed requests can't both pass it, so
+  // the token is strictly single-use even under a race.
+  const { data: claimed, error: claimErr } = await admin
+    .from('password_setup_tokens')
+    .update({ used_at: new Date().toISOString() } as unknown as never)
+    .eq('token', token)
+    .is('used_at', null)
+    .select('token');
+  if (claimErr) {
+    console.error('[set-password-from-token] token claim failed:', claimErr);
+    return NextResponse.json({ error: 'Could not process this link. Please try again.' }, { status: 500 });
+  }
+  if (!claimed || claimed.length === 0) {
+    // Someone (or a replay) already consumed it between the check and here.
+    return NextResponse.json(
+      { error: 'This link has already been used. If you need to change your password, use the Forgot Password option on the sign-in page.' },
+      { status: 410 }
+    );
+  }
+
+  // Step 3: set the password on the auth user (auto-confirm so they can sign in)
   const { error: updateErr } = await admin.auth.admin.updateUserById(tokenRow.user_id, {
     password,
     email_confirm: true,
@@ -109,12 +131,6 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-
-  // Step 3: mark token as used (one-time). Non-fatal if it fails.
-  await admin
-    .from('password_setup_tokens')
-    .update({ used_at: new Date().toISOString() } as unknown as never)
-    .eq('token', token);
 
   return NextResponse.json({
     success: true,
