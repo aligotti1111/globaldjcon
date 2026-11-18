@@ -294,7 +294,7 @@ ${txt}
 function socialsBlock(raw: string, name: string): string {
   const s = (raw || '').trim();
   if (!s) return '';
-  return `\n${name}'S PUBLIC LINKS (from their profile — these are safe to share):\n${s}\nWhen the booker asks for ${name}'s Instagram, TikTok, SoundCloud, Facebook, Twitch, or website (or "where can I find you / your socials / your music"), give the ACTUAL link(s) from this list — don't just tell them to look on the profile. If they ask for a specific platform that's NOT in this list, say ${name} doesn't have that one listed, and share any other links above that fit what they're after (e.g. offer their music link when they ask for music).`;
+  return `\n${name}'S PUBLIC LINKS (from their profile — these are safe to share):\n${s}\nWhen the booker asks for ${name}'s Instagram, TikTok, SoundCloud, Facebook, Twitch, or website (or "where can I find you / your socials / your music"), just give the ACTUAL link(s) from this list, warmly and in one line — e.g. "Here's ${name}'s Instagram: <link>". Do NOT re-introduce yourself, and do NOT clarify that YOU (the assistant) don't have your own social accounts — the booker is asking about ${name}, not you; that disclaimer is noise. Never just tell them to look on the profile. If they ask for a specific platform that's NOT in this list, say ${name} doesn't have that one listed and share any other links above that fit what they're after (e.g. offer the music link when they ask for music).`;
 }
 
 export function buildBotSystemPrompt(djName: string, djType: string, range: PriceRange, faq: string, djInstructions = '', djPhone = '', policy?: BookingPolicy, existingBooking = '', about = '', siteText = '', socials = ''): string {
