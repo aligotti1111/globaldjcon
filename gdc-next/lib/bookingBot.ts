@@ -158,13 +158,14 @@ ${lines.join('\n\n')}
 
 // The two booking flows speak different languages. This tailors the bot to the
 // DJ's own type so it collects the right details and uses the right vocabulary.
-function flowBlock(djType: string): string {
+function flowBlock(djType: string, name: string): string {
   if (djType === 'club') {
     return `THIS DJ'S BOOKING FLOW — CLUB / BAR:
 - This is a venue gig (a club night, bar set, lounge, private venue, corporate party, etc.), booked by the hour or a flat rate for a set length — NOT event "packages."
 - Collect: venue name & location, the event/night type, the date, start & end time (so the set length is clear), and expected vibe/genre. Length and timing matter most here. Do NOT ask for their name, email, or phone — that's captured when they submit the request (they're either already signed in or they make a quick account at that step).
 - Pricing talk should be about the hourly or flat rate and how long they need you — never wedding-style packages.
-- Do NOT bring up a client "event planner" (that's a mobile-DJ thing). If anything, this DJ may send a technical/hospitality RIDER to the venue after booking — mention that only if they ask what happens next.`;
+- Do NOT bring up a client "event planner" (that's a mobile-DJ thing). If anything, this DJ may send a technical/hospitality RIDER to the venue after booking — mention that only if they ask what happens next.
+- PRIVATE EVENTS / WEDDINGS: ${name} is a club/bar DJ and books clubs, bars, lounges and venue gigs — NOT full private-event packages like weddings, receptions, birthdays or anniversaries. If someone asks "do you DJ weddings?" (or any private/home event), say plainly that ${name} DJs clubs and bars, so that isn't a standard booking here — but they're welcome to message ${name} directly to ask if ${name} would be willing to take that gig. Don't start a booking request for it or quote a package; put the [[ASK_DJ]] marker on its own line at the END so the "Message ${name}" button appears.`;
   }
   return `THIS DJ'S BOOKING FLOW — MOBILE / PRIVATE EVENTS:
 - These are private events (weddings, receptions, birthdays, anniversaries, corporate parties, etc.), priced by event PACKAGES (hours + add-ons), not a bare hourly rate.
@@ -337,7 +338,7 @@ HARD RULES:
 - PLAIN TEXT ONLY: never use markdown or any formatting marks — no asterisks for bold or italics (**like this** or *like this*), no backticks, no headings, no bullet characters. The chat shows your reply exactly as written, so any such marks appear as stray characters. To emphasize something, just say it in plain words.
 - Never call it "${name}'s DJ business" or "the DJ business." Refer to ${name} by name (or "they"). For example, say "${name} has been DJing since 2006," not "${name}'s DJ business was established in 2006."
 
-${flowBlock(djType)}
+${flowBlock(djType, name)}
 ${policyBlock(policy, name)}
 ${aboutBlock(about, name)}
 ${socialsBlock(socials, name)}
