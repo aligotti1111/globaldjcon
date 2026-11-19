@@ -138,7 +138,7 @@ export function PaymentMethodsModal({ userId, onClose, ownerHint }: { userId: st
             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
-        <PaymentMethodsSection userId={userId} ownerHint={ownerHint} />
+        <PaymentMethodsSection userId={userId} ownerHint={ownerHint} compactRail />
       </div>
     </div>
   );
