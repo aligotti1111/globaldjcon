@@ -28,12 +28,13 @@ export async function billBreakdownForBooking(
     const admin = createAdminClient();
     const { data } = await admin
       .from('bookings')
-      .select('quoted_rate, cocktail_price, ceremony_price, cocktail_needed, ceremony_needed, offer_discount_pct, offer_discount_amount, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, currency, dj_id, booking_type, addons, package_title')
+      .select('quoted_rate, cocktail_price, ceremony_price, cocktail_needed, ceremony_needed, offer_discount_pct, offer_discount_amount, discount_pct, discount_amount, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount, currency, dj_id, booking_type, addons, package_title')
       .eq('id', bookingId)
       .maybeSingle<{
         quoted_rate: number | null; cocktail_price: number | null; ceremony_price: number | null;
         cocktail_needed: boolean | null; ceremony_needed: boolean | null;
         offer_discount_pct: number | null; offer_discount_amount: number | null;
+        discount_pct: number | null; discount_amount: number | null;
         tax_pct: number | null; tax_amount: number | null; total_with_tax: number | null;
         deposit_pct: number | null; deposit_amount: number | null; currency: string | null;
         dj_id: string | null; booking_type: string | null; addons: unknown; package_title: string | null;
@@ -91,8 +92,10 @@ export async function billBreakdownForBooking(
       addons: parseBookingAddons(data.addons),
       bundledCocktail: !!data.cocktail_needed,
       bundledCeremony: !!data.ceremony_needed,
-      discountPct: data.offer_discount_pct,
-      discountAmount: data.offer_discount_amount,
+      // The sale/promo discount (discount_amount) or, failing that, a manual
+      // counter/quote offer discount (offer_discount_amount).
+      discountPct: data.discount_pct ?? data.offer_discount_pct,
+      discountAmount: data.discount_amount ?? data.offer_discount_amount,
       taxPct: data.tax_pct,
       taxAmount: data.tax_amount,
       totalWithTax: data.total_with_tax,
