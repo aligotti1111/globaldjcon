@@ -171,22 +171,12 @@ export function mobileBookingRequestBox(opts: {
   const dateStr = opts.date ? fmtDate(opts.date) : '';
   if (dateStr) rows.push(row('Date', dateStr));
 
-  // Wedding bookings call the slot a reception. When both times are
-  // present we render two separate labelled rows; otherwise a single
-  // range row keeps non-wedding bookings unchanged.
-  const startStr = fmtTime(opts.startTime);
-  const endStr = fmtTime(opts.endTime);
-  if (opts.isWedding) {
-    if (startStr) rows.push(row('Reception Start Time', escHtml(startStr)));
-    if (endStr) rows.push(row('Reception End Time', escHtml(endStr)));
-  } else {
-    const range = fmtTimeRange(opts.startTime, opts.endTime);
-    if (range !== '—') rows.push(row('Time', escHtml(range)));
-  }
+  // Order the day chronologically: ceremony, then cocktail hour, then the
+  // reception. So the ceremony and cocktail blocks come BEFORE the reception
+  // time rows below.
 
-  // Ceremony rows (weddings only) — an independent add-on shown ABOVE cocktail
-  // hour, in event order. Yes/No always shows for weddings; start + room show
-  // only when ceremony music was requested.
+  // Ceremony rows (weddings only). Yes/No always shows for weddings; start +
+  // room show only when ceremony music was requested.
   if (opts.isWedding) {
     rows.push(row('Music for Ceremony', opts.ceremonyNeeded ? 'Yes' : 'No'));
   }
@@ -199,10 +189,9 @@ export function mobileBookingRequestBox(opts: {
     ));
   }
 
-  // Cocktail-hour rows. Weddings always show the Yes/No (it's a standard
-  // wedding question); other events show cocktail rows only when the booker
-  // added cocktail hour. Start time + room rows appear whenever cocktail-hour
-  // music was requested, for any event type.
+  // Cocktail-hour rows. Weddings always show the Yes/No; other events show
+  // cocktail rows only when the booker added cocktail hour. Start time + room
+  // rows appear whenever cocktail-hour music was requested, for any event type.
   if (opts.isWedding) {
     rows.push(row(
       'Music for Cocktail Hour',
@@ -218,6 +207,17 @@ export function mobileBookingRequestBox(opts: {
         ? `Same room as ${opts.isWedding ? 'reception' : 'event'}`
         : `Separate room from ${opts.isWedding ? 'reception' : 'event'}`,
     ));
+  }
+
+  // Reception (weddings) / event time, AFTER the ceremony + cocktail rows.
+  const startStr = fmtTime(opts.startTime);
+  const endStr = fmtTime(opts.endTime);
+  if (opts.isWedding) {
+    if (startStr) rows.push(row('Reception Start Time', escHtml(startStr)));
+    if (endStr) rows.push(row('Reception End Time', escHtml(endStr)));
+  } else {
+    const range = fmtTimeRange(opts.startTime, opts.endTime);
+    if (range !== '—') rows.push(row('Time', escHtml(range)));
   }
 
   if (opts.venueName) rows.push(row('Venue', escHtml(opts.venueName)));
@@ -238,9 +238,11 @@ export function mobileBookingRequestBox(opts: {
     ));
   }
 
-  if (opts.rateLabel && opts.rateValue) {
-    rows.push(row(opts.rateLabel, escHtml(opts.rateValue) + (opts.rateBreakdown ? ` <span style="color:#0a6f61;">(${escHtml(opts.rateBreakdown)})</span>` : '')));
-  }
+  // NOTE: the rate row is intentionally NOT shown in this top event box — the
+  // full price breakdown (package, add-ons, saving, tax, total) renders in its
+  // own billBox below, so the rate here would be a redundant duplicate.
+  // (rateLabel/rateValue/rateBreakdown are kept on the type for callers that
+  // still pass them, but they no longer render here.)
 
   if (rows.length > 0) {
     rows[rows.length - 1] = rows[rows.length - 1].replace('margin:0 0 8px', 'margin:0');
@@ -336,12 +338,9 @@ export function billBreakdownBox(
     for (const a of addonItems) {
       rows.push(row(escHtml(a.title), `+${money(Number(a.price) || 0)}`, { muted: true }));
     }
-  } else if (discAmt > 0) {
-    // subtotal is already net of the discount — show what it was before.
-    rows.push(row('Total Event Price', money(subtotal + discAmt)));
-    rows.push(row(`Discount (${discPct}%)`, `−${money(discAmt)}`, { muted: true }));
-    rows.push(row('Discounted price', money(subtotal), { top: true }));
   } else {
+    // subtotal is already net of any discount — the saving is shown as its own
+    // "Total saving" line under the Total Event Cost below, not inline here.
     rows.push(row('Total Event Price', money(subtotal)));
   }
   if (bundled.length > 0) {
@@ -352,6 +351,8 @@ export function billBreakdownBox(
   }
   if (taxAmt > 0) rows.push(row(`Sales tax${taxPct > 0 ? ` (${taxPct}%)` : ''}`, money(taxAmt)));
   rows.push(row(taxAmt > 0 ? 'Total Event Cost (with tax)' : 'Total Event Cost', money(total), { bold: true, top: true }));
+  // Sale / promo-code saving, shown directly under the Total Event Cost.
+  if (discAmt > 0) rows.push(row('Total saving', `−${money(discAmt)}`, { muted: true }));
   // Payment schedule lives in its own table under a "Payment Schedule" heading
   // (matching the manual-booking email) rather than as more rows under Total.
   const scheduleRows: string[] = [];
