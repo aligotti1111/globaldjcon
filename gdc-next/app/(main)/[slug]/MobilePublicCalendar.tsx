@@ -1079,7 +1079,7 @@ function SingleMonthView({
             </div>
           )}
           <div style={myBookedNoteStyle}>
-            Booked for your {mine.event}{!isNarrow && mine.time ? ` · ${mine.time}` : ''}
+            Booked for your {mine.event}
           </div>
         </>
       );
@@ -1112,7 +1112,7 @@ function SingleMonthView({
       const mine = myBookedEvents.get(key)!;
       inner = (
         <div style={myBookedNoteStyle}>
-          Booked for your {mine.event}{!isNarrow && mine.time ? ` · ${mine.time}` : ''}
+          Booked for your {mine.event}
         </div>
       );
     } else if (
