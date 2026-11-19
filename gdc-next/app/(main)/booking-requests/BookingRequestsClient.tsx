@@ -14,9 +14,11 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import styles from './bookingRequests.module.css';
 import PaymentOptions from './PaymentOptions';
-import CounterModal from './CounterModal';
-import QuoteModal from './QuoteModal';
-import HistoryModal from './HistoryModal';
+import dynamic from 'next/dynamic';
+// Lazy-loaded: these modals only mount when the DJ opens them.
+const CounterModal = dynamic(() => import('./CounterModal'), { ssr: false });
+const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
+const HistoryModal = dynamic(() => import('./HistoryModal'), { ssr: false });
 import ComposeMessageModal from '@/components/ComposeMessageModal';
 import { useConfirm } from '@/components/ConfirmModal';
 import { formatShortDate } from './helpers';
