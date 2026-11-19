@@ -176,7 +176,7 @@ export default function RequestPaymentModal({
               ? { display: 'flex', gap: '.6rem', alignItems: 'flex-start', marginBottom: '.5rem' }
               : { marginBottom: '.5rem' }}>
               {showPctPicker && (
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: '0 0 110px' }}>
                   <label style={{ display: 'block', fontFamily: "'Space Mono', monospace", fontSize: '.6rem', letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted,#8a8aa0)', marginBottom: '.35rem' }}>
                     Deposit %
                   </label>
@@ -185,7 +185,7 @@ export default function RequestPaymentModal({
                     onChange={(e) => applyPct(e.target.value)}
                     style={{
                       width: '100%', background: 'var(--deep,#0b0b12)', border: '1px solid rgba(255,255,255,.14)',
-                      borderRadius: 6, color: 'var(--white,#fff)', padding: '.55rem .7rem',
+                      borderRadius: 6, color: 'var(--white,#fff)', padding: '.55rem 1.9rem .55rem .7rem',
                       fontFamily: "'Space Mono', monospace", fontSize: '.82rem', cursor: 'pointer',
                       boxSizing: 'border-box', height: '2.35rem',
                     }}
