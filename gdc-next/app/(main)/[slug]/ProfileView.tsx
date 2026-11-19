@@ -222,7 +222,9 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // your <event> · <time>" on that day (only this viewer sees it).
   const [myBookedEvents, setMyBookedEvents] = useState<Map<string, { event: string; time: string }>>(new Map());
   useEffect(() => {
-    if (!currentUser?.id || !data.id) {
+    // The owner (or a teammate editing) is never a "host" of their own profile,
+    // so never load / show "Booked for your …" — even in public-view preview.
+    if (!currentUser?.id || !data.id || isOwnProfile || canEditProfile) {
       setClubPendingDates(new Set());
       setMyBookedEvents(new Map());
       return;
@@ -264,7 +266,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       setMyBookedEvents(booked);
     })();
     return () => { cancelled = true; };
-  }, [currentUser?.id, data.id, clubPendingRefreshKey]);
+  }, [currentUser?.id, data.id, isOwnProfile, canEditProfile, clubPendingRefreshKey]);
   // Compose-message modal — opened by the "Message" button in HeroActions.
   // For logged-out visitors we route them to /login first.
   const [composeOpen, setComposeOpen] = useState(false);
