@@ -11,7 +11,7 @@ import Link from 'next/link';
 import styles from './accountSettings.module.css';
 import SectionBanner from '../update-dj-profile/SectionBanner';
 import {
-  BOT_TRAINING_QUESTIONS, parseBotTraining, serializeBotTraining,
+  trainingQuestionsFor, parseBotTraining, serializeBotTraining,
   BOT_TRAINING_ANSWER_MAX, BOT_TRAINING_EXTRA_MAX,
 } from '@/lib/bookingBotTraining';
 
@@ -21,6 +21,9 @@ const MUTED = 'var(--muted,#8a8aa0)';
 export default function BookingBotSection() {
   const [enabled, setEnabled] = useState(false);
   const [eligible, setEligible] = useState(true);
+  // Drives which training questions the DJ sees — a club/bar DJ gets a
+  // venue-focused set, a mobile DJ gets a private-event set.
+  const [djType, setDjType] = useState<string>('mobile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -48,10 +51,11 @@ export default function BookingBotSection() {
     (async () => {
       try {
         const res = await fetch('/api/dj/booking-bot-setting');
-        const d = (await res.json().catch(() => ({}))) as { ok?: boolean; enabled?: boolean; eligible?: boolean; instructions?: string; siteUrl?: string; siteFetchedAt?: string | null; siteHasText?: boolean };
+        const d = (await res.json().catch(() => ({}))) as { ok?: boolean; enabled?: boolean; eligible?: boolean; djType?: string; instructions?: string; siteUrl?: string; siteFetchedAt?: string | null; siteHasText?: boolean };
         if (alive && res.ok && d.ok) {
           setEnabled(d.enabled === true);
           setEligible(d.eligible !== false);
+          setDjType(d.djType || 'mobile');
           const t = parseBotTraining(d.instructions || '');
           setAnswers(t.answers);
           setExtra(t.extra);
@@ -199,7 +203,7 @@ export default function BookingBotSection() {
                   Fill in what applies and skip the rest — all optional.
                 </p>
 
-                {BOT_TRAINING_QUESTIONS.map((q) => (
+                {trainingQuestionsFor(djType).map((q) => (
                   <div key={q.key} style={{ marginBottom: '.9rem' }}>
                     <label style={{ display: 'block', color: '#eaeaf0', fontSize: '.84rem', fontWeight: 600, marginBottom: '.3rem' }}>
                       {q.label}
