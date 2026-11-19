@@ -78,6 +78,8 @@ type Row = {
   offer_amount: number | null;
   counter_rate: number | null;
   currency: string | null;
+  total_with_tax: number | null;
+  tax_pct: number | null;
 };
 
 type Tab = 'respond' | 'awaiting';
@@ -113,7 +115,7 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
     if (!user?.id) return;
     const db = createClient();
     try {
-      const cols = 'id, requester_name, event_type, venue_type, event_date, created_at, quoted_rate, offer_amount, counter_rate, currency';
+      const cols = 'id, requester_name, event_type, venue_type, event_date, created_at, quoted_rate, offer_amount, counter_rate, currency, total_with_tax, tax_pct';
       const q = (col: 'dj_id' | 'requester_id', status: 'pending' | 'counter') =>
         db.from('bookings')
           .select(cols)
@@ -131,6 +133,14 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
           // The STANDING amount: a counter, once made, supersedes the original
           // offer — so counter_rate wins. Falls back to the original ask.
           const rate = r.counter_rate ?? r.quoted_rate ?? r.offer_amount ?? null;
+          // Show the FULL price the host owes, tax included. With no counter, the
+          // booking's frozen total_with_tax is authoritative (covers tax + any
+          // add-ons). A counter supersedes that snapshot, so apply the frozen
+          // tax_pct to the countered base instead.
+          const taxP = r.tax_pct != null ? Number(r.tax_pct) : null;
+          const fullPrice = r.counter_rate == null && r.total_with_tax != null
+            ? Number(r.total_with_tax)
+            : (rate != null && taxP ? rate * (1 + taxP / 100) : rate);
           // Countdown to auto-expiry (created_at + 5 days, capped at the event
           // day). tz is unknown here, so this falls back to US Eastern — close
           // enough for a "N days left" line; the card page shows the exact value.
@@ -141,7 +151,7 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
             label: labelFor(r),
             eventDate: r.event_date,
             at: r.created_at,
-            price: rate != null ? money(Number(rate), r.currency) : null,
+            price: fullPrice != null ? money(Number(fullPrice), r.currency) : null,
             expiry: ex.label,
             expired: ex.expired,
           };
