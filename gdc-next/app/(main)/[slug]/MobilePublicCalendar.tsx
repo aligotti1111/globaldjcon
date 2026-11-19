@@ -872,17 +872,23 @@ function SingleMonthView({
     return () => mq.removeEventListener?.('change', on);
   }, []);
   // "Booked for your …" note — white on a dark backing so it stays legible on
-  // both the red (fully-booked) cells and the dark available cells.
+  // both the red (fully-booked) cells and the dark available cells. Pinned to
+  // the BOTTOM of the cell so the Book pill keeps its normal (centered) spot.
   const myBookedNoteStyle: React.CSSProperties = {
-    marginTop: 3,
+    position: 'absolute',
+    bottom: 4,
+    left: '50%',
+    transform: 'translateX(-50%)',
     fontSize: isNarrow ? 8 : 10,
     lineHeight: 1.2,
     fontWeight: 700,
+    textAlign: 'center',
     color: '#fff',
     background: 'rgba(0,0,0,.55)',
     padding: isNarrow ? '1px 3px' : '2px 5px',
     borderRadius: 5,
-    maxWidth: '96%',
+    maxWidth: '94%',
+    pointerEvents: 'none',
   };
   const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   // The maximum date a visitor can book — today + bookingWindowMonths
@@ -1061,10 +1067,7 @@ function SingleMonthView({
       // they may want to book this DJ again.
       const mine = myBookedEvents.get(key)!;
       inner = (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <div style={myBookedNoteStyle}>
-            Booked for your {mine.event}{!isNarrow && mine.time ? ` · ${mine.time}` : ''}
-          </div>
+        <>
           {!readOnly && (
             <div
               className={styles.bookBadge}
@@ -1074,7 +1077,10 @@ function SingleMonthView({
               Book
             </div>
           )}
-        </div>
+          <div style={myBookedNoteStyle}>
+            Booked for your {mine.event}{!isNarrow && mine.time ? ` · ${mine.time}` : ''}
+          </div>
+        </>
       );
     } else if (!isOwnProfile && !readOnly && isAvail) {
       // Pending takes precedence over Book — if THIS viewer already has a
@@ -1140,7 +1146,7 @@ function SingleMonthView({
         key={key}
         className={cellClasses.join(' ')}
         onClick={cellClickHandler}
-        style={{ ...(partialBg ? { background: partialBg } : {}), ...(cellClickHandler ? { cursor: 'pointer' } : {}) }}
+        style={{ position: 'relative', ...(partialBg ? { background: partialBg } : {}), ...(cellClickHandler ? { cursor: 'pointer' } : {}) }}
       >
         <div className={numClasses.join(' ')}>{d}</div>
         {inner}
