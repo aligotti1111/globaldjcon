@@ -20,7 +20,9 @@ import { markStepViewed } from '@/components/SetupChecklist';
 import BookingTab from '../update-dj-profile/BookingTab';
 import { parseCustomEventTypes } from '@/lib/constants';
 import ClubBookingTab from '../update-dj-profile/ClubBookingTab';
-import ContractPortal from '../update-dj-profile/ContractPortal';
+import dynamic from 'next/dynamic';
+// Lazy-loaded: the contract editor only mounts on the Contracts tab.
+const ContractPortal = dynamic(() => import('../update-dj-profile/ContractPortal'), { ssr: false });
 import PlannerLibrarySection from './PlannerLibrarySection';
 import ReceiptSettingsSection from './ReceiptSettingsSection';
 import styles from '../update-dj-profile/updateDjProfile.module.css';
