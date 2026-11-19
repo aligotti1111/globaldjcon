@@ -1713,7 +1713,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 const headRest: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', width: '100%', minWidth: 0 };
                 // White bar, grey text — thick, bold-sans, so "ways to pay"
                 // reads as its own thing, distinct from the Deposit/Balance heroes.
-                const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: '#ffffff', color: '#000000', margin: '0 0 .8rem' };
+                const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.82rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.5rem .95rem', borderRadius: 8, background: '#ffffff', color: '#000000', margin: '0 0 .7rem' };
                 const lbl: React.CSSProperties = { ...label, color: '#6b727b' };
                 const meetOn = m.cashMeet !== false;   // default ON
                 const officeOn = m.cashOffice === true; // default OFF
@@ -1721,9 +1721,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
                     <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 1.1rem', textAlign: 'left' }}>Step 2</div>
                     {(() => { const nOn = (meetOn ? 1 : 0) + (officeOn ? 1 : 0); const noWay = attempted && (depositRequired || m.cashNightOf === false) && nOn === 0; return (
-                    <div style={{ ...waysHero, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '.35rem', ...(noWay ? { background: '#b42318', color: '#fff' } : {}) }}>
-                      <span>Choose the ways the host can get you the cash</span>
-                      <span style={{ alignSelf: 'flex-end', flexShrink: 0, fontSize: '.7rem', fontWeight: 800, letterSpacing: '.03em', color: noWay ? '#fff' : (nOn > 0 ? '#0a7d5a' : '#9aa0a6'), whiteSpace: 'nowrap' }}>{nOn} active</span>
+                    <div style={{ ...waysHero, ...(noWay ? { background: '#b42318', color: '#fff' } : {}) }}>
+                      Choose the ways the host can get you the cash
                     </div>
                     ); })()}
 
@@ -1879,14 +1878,13 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     const dim = (on: boolean): React.CSSProperties => ({ opacity: on ? 1 : 0.45, transition: 'opacity .15s' });
                     const headRest: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '.55rem', width: '100%', minWidth: 0 };
                     const ckTitle: React.CSSProperties = { fontFamily: "'Bebas Neue', Impact, sans-serif", fontSize: '1.15rem', fontWeight: 400, letterSpacing: '.03em', color: 'var(--white)' };
-                    const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.92rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.75rem .95rem', borderRadius: 8, background: '#ffffff', color: '#000000', margin: '0 0 .8rem' };
+                    const waysHero: React.CSSProperties = { display: 'block', fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif", fontWeight: 800, fontSize: '.82rem', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1.2, padding: '.5rem .95rem', borderRadius: 8, background: '#ffffff', color: '#000000', margin: '0 0 .7rem' };
                     return (
                       <div style={{ marginTop: '.9rem', paddingTop: '.85rem', borderTop: '1px solid var(--border)' }}>
                         <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--neon)', margin: '0 0 1.1rem', textAlign: 'left' }}>Step 2</div>
-                        {(() => { const nOn = (m.checkMail !== false ? 1 : 0) + (m.checkMeet === true ? 1 : 0) + (m.checkOffice === true ? 1 : 0); const usable = (m.checkMail !== false) || (m.checkMeet === true && !!(m.checkPhone || '').trim()) || (m.checkOffice === true && !!(m.dropoffAddress || '').trim()); const noWay = attempted && (depositRequired || m.checkNightOf === false) && !usable; return (
-                        <div style={{ ...waysHero, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '.35rem', ...(noWay ? { background: '#b42318', color: '#fff' } : {}) }}>
-                          <span>Choose the ways the host can get you the check</span>
-                          <span style={{ alignSelf: 'flex-end', flexShrink: 0, fontSize: '.7rem', fontWeight: 800, letterSpacing: '.03em', color: noWay ? '#fff' : (nOn > 0 ? '#0a7d5a' : '#9aa0a6'), whiteSpace: 'nowrap' }}>{nOn} active</span>
+                        {(() => { const usable = (m.checkMail !== false) || (m.checkMeet === true && !!(m.checkPhone || '').trim()) || (m.checkOffice === true && !!(m.dropoffAddress || '').trim()); const noWay = attempted && (depositRequired || m.checkNightOf === false) && !usable; return (
+                        <div style={{ ...waysHero, ...(noWay ? { background: '#b42318', color: '#fff' } : {}) }}>
+                          Choose the ways the host can get you the check
                         </div>
                         ); })()}
 
