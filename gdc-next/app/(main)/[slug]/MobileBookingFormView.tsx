@@ -618,7 +618,9 @@ export default function MobileBookingForm({
   // Show the itemized breakdown (Subtotal/Tax/Total…) when there's tax and/or
   // a deposit — otherwise the package price alone is the whole story.
   const showPriceBreakdown = !!priceResult && !priceResult.isQuote && priceResult.price != null
-    && discountedTotal != null && grandTotal != null && (taxPct > 0 || depositPct > 0 || addonsTotal > 0);
+    && discountedTotal != null && grandTotal != null
+    && (taxPct > 0 || depositPct > 0 || addonsTotal > 0
+        || priceResult.cocktailAddon > 0 || (priceResult.ceremonyAddon ?? 0) > 0);
 
   // The auto-selected "Request a Quote" card (a specialty / unpriced type with a
   // bare placeholder package) already says "Price on request" and explains the
@@ -2055,6 +2057,20 @@ export default function MobileBookingForm({
                 <div style={rowStyle}>
                   <span>{pkgName}</span>{priceCell(pkgBase)}
                 </div>
+                {/* Cocktail hour / ceremony music are folded INTO the package
+                    price above — shown here as indented "of which" sub-lines so
+                    the client sees what's inside the package, not as extra
+                    charges on top (they don't add to the total). */}
+                {priceResult.cocktailAddon > 0 && (
+                  <div style={{ ...rowStyle, paddingLeft: 16, paddingTop: 1, paddingBottom: 1, fontSize: '.78rem', color: 'var(--muted,#8a8aa0)' }}>
+                    <span>Cocktail hour</span><span>+{money2(priceResult.cocktailAddon)}</span>
+                  </div>
+                )}
+                {(priceResult.ceremonyAddon ?? 0) > 0 && (
+                  <div style={{ ...rowStyle, paddingLeft: 16, paddingTop: 1, paddingBottom: 1, fontSize: '.78rem', color: 'var(--muted,#8a8aa0)' }}>
+                    <span>Ceremony music</span><span>+{money2(priceResult.ceremonyAddon ?? 0)}</span>
+                  </div>
+                )}
                 {selectedAddons.map((origIdx) => {
                   const a = mobAddons.find((x) => x._idx === origIdx);
                   if (!a) return null;
@@ -2094,14 +2110,9 @@ export default function MobileBookingForm({
             {priceResult.price != null && depositPct === 0 && taxPct === 0 && (
               <div className={styles.depositText}>No deposit required</div>
             )}
-            {priceResult.cocktailAddon > 0 && (
-              <div className={styles.cocktailNote}>
-                Includes cocktail hour: +{cur}{priceResult.cocktailAddon.toLocaleString()}
-              </div>
-            )}
-            {(priceResult.ceremonyAddon ?? 0) > 0 && (
-              <div className={styles.cocktailNote}>Includes ceremony music: +{cur}{(priceResult.ceremonyAddon ?? 0).toLocaleString()}</div>
-            )}
+            {/* Cocktail hour / ceremony music now appear as indented sub-lines
+                under the Package line in the breakdown above — no separate
+                "Includes …" notes here. */}
             {!priceResult.isQuote && priceResult.price != null && Number(selectedPkg?.overtime) > 0 && (
               <div className={styles.overtimeNote}>
                 Overtime rate: {cur}{Number(selectedPkg?.overtime).toLocaleString()}/hr
