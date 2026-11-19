@@ -26,8 +26,11 @@ import { type MobilePackage } from '../[slug]/bookingSettings';
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking, BookingPayment, BookingPlannerSummary } from './page';
 import { canUsePro, type AccessFields } from '@/lib/access';
+import dynamic from 'next/dynamic';
 import MonthlyStory from './MonthlyStory';
-import AddManualBookingModal from './AddManualBookingModal';
+// Lazy-loaded: the ~2,000-line add/edit modal is only mounted when the DJ
+// opens it, so it stays out of the initial Upcoming Bookings bundle.
+const AddManualBookingModal = dynamic(() => import('./AddManualBookingModal'), { ssr: false });
 import CalendarSyncButton from './CalendarSyncButton';
 import BookingRow from './BookingRow';
 import { useConfirm } from '@/components/ConfirmModal';
