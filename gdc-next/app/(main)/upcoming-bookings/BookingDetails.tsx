@@ -15,13 +15,17 @@ import type { UpcomingBooking, BookingPayment } from './page';
 import { confirmedRail } from './pipeline/buildSteps';
 import { RailMark } from '../update-dj-profile/BrandMarks';
 import NotesFeed from '@/components/NotesFeed';
-import ContractSendModal from './ContractSendModal';
-import RiderSendModal from './RiderSendModal';
-import ContractPortal from '../update-dj-profile/ContractPortal';
+import dynamic from 'next/dynamic';
 import FlyerSlot from './FlyerSlot';
 import OvertimeSection from './OvertimeSection';
 import BookingLog, { type ChangeLogItem } from './BookingLog';
-import BookingEditModal, { type EditSection, type ContractState } from './BookingEditModal';
+import type { EditSection, ContractState } from './BookingEditModal';
+// Lazy-loaded: these modals/portals only mount when the DJ opens them, keeping
+// the booking details chunk out of the initial list payload.
+const ContractSendModal = dynamic(() => import('./ContractSendModal'), { ssr: false });
+const RiderSendModal = dynamic(() => import('./RiderSendModal'), { ssr: false });
+const ContractPortal = dynamic(() => import('../update-dj-profile/ContractPortal'), { ssr: false });
+const BookingEditModal = dynamic(() => import('./BookingEditModal'), { ssr: false });
 import VenueDistance from './VenueDistance';
 import { parseBookingAddons, addonsTotal } from '@/lib/addons';
 import { useConfirm } from '@/components/ConfirmModal';
