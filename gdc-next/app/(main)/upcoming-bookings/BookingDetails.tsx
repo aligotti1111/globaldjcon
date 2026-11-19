@@ -736,20 +736,20 @@ export default function BookingDetails({
     [
       { label: 'Email', value: (booking as { host_email?: string | null }).host_email || (booking as { account_email?: string | null }).account_email || null },
     ],
-    // Rate lines. A WEDDING labels the base "Reception" and itemizes a
-    // separately-charged Ceremony and/or Cocktail Hour on their own lines (no
-    // combined subtotal — Tax and Total Event Cost follow). Every other event
-    // type is a single "Price" (the agreed rate). (Overtime moved out of the
-    // receipt to the Event card's bottom-right — see overtimeControl.)
+    // Rate lines. A WEDDING labels the base "Package price" (same as every other
+    // event type) and itemizes a separately-charged Ceremony and/or Cocktail Hour
+    // on their own lines (no combined subtotal — Tax and Total Event Cost follow).
+    // (Overtime moved out of the receipt to the Event card's bottom-right — see
+    // overtimeControl.)
     ...(itemizedRate
       ? ([
-          [{ label: isWedding ? 'Reception' : 'Package price', value: money(agreedBase) }],
+          [{ label: 'Package price', value: money(agreedBase) }],
           ...(hasSeparateCeremony ? [[{ label: 'Ceremony', value: money(ceremonyCharge) }]] : []),
           ...(hasSeparateCocktail ? [[{ label: 'Cocktail Hour', value: money(cocktailCharge) }]] : []),
           ...bookingAddons.map((a) => [{ label: a.title, value: money(a.price) }]),
         ] as DetailRow[])
       : ([
-          [{ label: isWedding ? 'Reception' : 'Package price', value: agreedRateWithDiscount }],
+          [{ label: 'Package price', value: agreedRateWithDiscount }],
         ] as DetailRow[])),
     // Row 7a: Deposit due up front (part of the Payment schedule band). Only
     // shown when the booking actually carries a deposit.
