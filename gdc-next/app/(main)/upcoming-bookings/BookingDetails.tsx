@@ -886,12 +886,33 @@ export default function BookingDetails({
     const delta = cardTotal != null && balancePaidLine ? round2(Number(cardTotal) - collectedTotal) : 0;
     return (
       <>
-        {main.map((c) => (
-          <div key={c.label} className={`${styles.priceRow}${isTotal(c.label) ? ' ' + styles.priceRowTotal : ''}`}>
-            <span className={styles.priceKey}>{c.label}{(c.label === 'Agreed Rate' || c.label === 'Reception' || c.label === 'Price' || c.label === 'Package price') ? badgeFor('price') : c.label === 'Tax' ? badgeFor('tax_pct') : null}</span>
-            <span className={styles.priceVal}>{c.value}</span>
-          </div>
-        ))}
+        {(() => {
+          // Group the receipt visually: the base "Package price", then a captioned
+          // "Add-ons" cluster (when extras were chosen), then Tax set apart from the
+          // extras. Pure spacing + a muted caption — the rows/values are unchanged.
+          const anyAddons = main.some((c) => addonTitleSet.has((c.label || '').trim()));
+          let addonCaptionShown = false;
+          return main.map((c) => {
+            const isAddon = addonTitleSet.has((c.label || '').trim());
+            const isTaxRow = c.label === 'Tax';
+            const showCaption = isAddon && !addonCaptionShown;
+            if (showCaption) addonCaptionShown = true;
+            return (
+              <Fragment key={c.label}>
+                {showCaption && (
+                  <div style={{ marginTop: 14, marginBottom: 2, fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.58rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6a6a82' }}>Add-ons</div>
+                )}
+                <div
+                  className={`${styles.priceRow}${isTotal(c.label) ? ' ' + styles.priceRowTotal : ''}`}
+                  style={isTaxRow && anyAddons ? { marginTop: 14 } : undefined}
+                >
+                  <span className={styles.priceKey}>{c.label}{(c.label === 'Agreed Rate' || c.label === 'Reception' || c.label === 'Price' || c.label === 'Package price') ? badgeFor('price') : c.label === 'Tax' ? badgeFor('tax_pct') : null}</span>
+                  <span className={styles.priceVal}>{c.value}</span>
+                </div>
+              </Fragment>
+            );
+          });
+        })()}
         {/* A pending tax change on a booking that currently has no tax row still
             needs to show — otherwise the DJ sees no sign the request was sent. */}
         {pendingCols.has('tax_pct') && !main.some((c) => c.label === 'Tax') && (
