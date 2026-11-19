@@ -15,6 +15,7 @@ import { buildMixEmbed, buildVideoEmbed } from './embeds';
 import { parseBookingSettings, packageTiers, isSaleActive } from './bookingSettings';
 import PublicCalendar from './PublicCalendar';
 import MobilePublicCalendar from './MobilePublicCalendar';
+import { MOB_EVENT_TYPE_LABELS } from './mobileBookingForm';
 import { parseCustomEventTypes } from '@/lib/constants';
 import ClubBookingForm from './ClubBookingForm';
 import BookingLoginGate from './BookingLoginGate';
@@ -250,7 +251,11 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
         if (!r.event_date) return;
         if (r.status === 'pending') { set.add(r.event_date); return; }
         if (r.status === 'approved') {
-          const ev = cap((r.event_type || 'event').replace(/_/g, ' '));
+          // Use the same display label the booking form shows (e.g. "Wedding",
+          // "Sweet 16"), not a raw title-cased key. Custom types that aren't in
+          // the map fall back to a tidied version of their stored value.
+          const key = (r.event_type || '').trim();
+          const ev = MOB_EVENT_TYPE_LABELS[key] || cap(key.replace(/_/g, ' ')) || 'Event';
           const start = fmt12(r.start_time);
           booked.set(r.event_date, { event: ev, time: start });
         }
