@@ -216,9 +216,14 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
   // viewer submits a new request via clubPendingRefreshKey. ───────────
   const [clubPendingDates, setClubPendingDates] = useState<Set<string>>(new Set());
   const [clubPendingRefreshKey, setClubPendingRefreshKey] = useState(0);
+  // When this viewer already has an APPROVED booking with this DJ, map that
+  // date → the event label + time so the mobile calendar can note "Booked for
+  // your <event> · <time>" on that day (only this viewer sees it).
+  const [myBookedEvents, setMyBookedEvents] = useState<Map<string, { event: string; time: string }>>(new Map());
   useEffect(() => {
     if (!currentUser?.id || !data.id) {
       setClubPendingDates(new Set());
+      setMyBookedEvents(new Map());
       return;
     }
     let cancelled = false;
@@ -226,16 +231,32 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
       const supabase = createClient();
       const { data: rows } = await supabase
         .from('bookings')
-        .select('event_date')
+        .select('event_date, status, event_type, start_time, end_time')
         .eq('dj_id', data.id)
         .eq('requester_id', currentUser.id)
-        .eq('status', 'pending');
+        .in('status', ['pending', 'approved']);
       if (cancelled) return;
       const set = new Set<string>();
-      (rows as { event_date: string | null }[] | null)?.forEach((r) => {
-        if (r.event_date) set.add(r.event_date);
+      const booked = new Map<string, { event: string; time: string }>();
+      const cap = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
+      const fmt12 = (t: string | null | undefined): string => {
+        const m = (t || '').match(/^(\d{1,2}):(\d{2})/);
+        if (!m) return '';
+        let h = parseInt(m[1], 10); const ap = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return `${h}:${m[2]} ${ap}`;
+      };
+      (rows as { event_date: string | null; status: string | null; event_type: string | null; start_time: string | null; end_time: string | null }[] | null)?.forEach((r) => {
+        if (!r.event_date) return;
+        if (r.status === 'pending') { set.add(r.event_date); return; }
+        if (r.status === 'approved') {
+          const ev = cap((r.event_type || 'event').replace(/_/g, ' '));
+          const start = fmt12(r.start_time);
+          booked.set(r.event_date, { event: ev, time: start });
+        }
       });
       setClubPendingDates(set);
+      setMyBookedEvents(booked);
     })();
     return () => { cancelled = true; };
   }, [currentUser?.id, data.id, clubPendingRefreshKey]);
@@ -1309,6 +1330,7 @@ export default function ProfileView({ data, effectiveSlug, isLoggedIn, isOwnProf
                 ownerToggle={ownerViewToggle}
                 force12mo={forceCalendar12mo}
                 pendingDates={clubPendingDates}
+                myBookedEvents={myBookedEvents}
                 onBookingSubmitted={() => setClubPendingRefreshKey((k) => k + 1)}
               />
             </div>
