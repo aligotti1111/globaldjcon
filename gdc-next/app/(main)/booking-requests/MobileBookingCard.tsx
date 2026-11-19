@@ -471,7 +471,7 @@ export default function MobileBookingCard(props: Props) {
         const bt = b as typeof b & {
           tax_pct?: number | null; tax_amount?: number | null; total_with_tax?: number | null;
           deposit_pct?: number | null; deposit_amount?: number | null;
-          discount_amount?: number | null; discount_label?: string | null;
+          discount_amount?: number | null; discount_label?: string | null; discount_code?: string | null;
         };
         const r2 = (n: number) => Math.round(n * 100) / 100;
         const money2 = (n: number) =>
@@ -523,7 +523,13 @@ export default function MobileBookingCard(props: Props) {
             ))}
             {ceremonyP > 0 && row('Ceremony', money2(ceremonyP))}
             {cocktailP > 0 && row('Cocktail hour', money2(cocktailP))}
-            {bt.discount_amount != null && Number(bt.discount_amount) > 0 && row(bt.discount_label || 'Discount', `−${money2(Number(bt.discount_amount))}`, false, true)}
+            {/* A promo code the client entered shows as "Promo Code: CODE (X% off)";
+                the DJ's account-wide sale (no code) shows as "Total savings". */}
+            {bt.discount_amount != null && Number(bt.discount_amount) > 0 && row(
+              (bt.discount_code || '').trim()
+                ? `Promo Code: ${bt.discount_label || (bt.discount_code || '').trim()}`
+                : 'Total savings',
+              `−${money2(Number(bt.discount_amount))}`, false, true)}
             {taxAmt > 0 && row(`Sales tax (${taxPct}%)`, money2(taxAmt))}
             {row('Total Event Cost (with tax)', money2(totalWithTax), true)}
             {depAmt > 0 && (
