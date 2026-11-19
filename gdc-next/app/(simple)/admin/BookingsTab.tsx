@@ -18,7 +18,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import PipelineHero from '@/app/(main)/upcoming-bookings/pipeline/PipelineHero';
 import { buildBookingSteps } from '@/app/(main)/upcoming-bookings/pipeline/buildSteps';
 import type { UpcomingBooking, BookingPayment } from '@/app/(main)/upcoming-bookings/page';
-import BookingEditModal, { type EditSection } from '@/app/(main)/upcoming-bookings/BookingEditModal';
+import dynamic from 'next/dynamic';
+import type { EditSection } from '@/app/(main)/upcoming-bookings/BookingEditModal';
+const BookingEditModal = dynamic(() => import('@/app/(main)/upcoming-bookings/BookingEditModal'), { ssr: false });
 import { searchAdminBookings, getAdminBookingDetail, getAdminEventTypes, updateWeddingExtras, type AdminBookingRow, type AdminBookingDetail, type WeddingExtrasInput } from './admin-bookings';
 
 const NEON = '#00e0a4';
