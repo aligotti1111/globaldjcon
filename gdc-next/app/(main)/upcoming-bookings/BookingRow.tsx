@@ -18,16 +18,18 @@ import ShareBookingButton from './ShareBookingButton';
 import { MOB_EVENT_TYPE_LABELS } from '../[slug]/mobileBookingForm';
 import styles from './upcomingBookings.module.css';
 import type { UpcomingBooking, BookingPayment, BookingPlannerSummary } from './page';
-import ContractPortal from '../update-dj-profile/ContractPortal';
+import dynamic from 'next/dynamic';
 import { ConfirmDialog, PaymentMethodsModal } from './RowModals';
-import RequestPaymentModal from './RequestPaymentModal';
 import { type PaymentMethod, usableMethods, METHOD_TYPES } from '@/lib/paymentMethods';
-import PlannerSendModal from './PlannerSendModal';
-import RiderSendModal from './RiderSendModal';
 import { useSendActions } from './hooks/useSendActions';
 import FlyerSlot from './FlyerSlot';
 import BookingDetails from './BookingDetails';
-import EditReceiptModal from './EditReceiptModal';
+// These modals only mount when the DJ opens them, so they're lazy-loaded to
+// keep each booking row's chunk small on the Upcoming Bookings list.
+const RequestPaymentModal = dynamic(() => import('./RequestPaymentModal'), { ssr: false });
+const PlannerSendModal = dynamic(() => import('./PlannerSendModal'), { ssr: false });
+const RiderSendModal = dynamic(() => import('./RiderSendModal'), { ssr: false });
+const EditReceiptModal = dynamic(() => import('./EditReceiptModal'), { ssr: false });
 import {
   MOBILE_EVENT_TYPES, NEON,
   fmtMoney, getDateParts, formatTimeRange,
