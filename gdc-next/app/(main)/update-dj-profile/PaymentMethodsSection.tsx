@@ -93,7 +93,7 @@ import { searchAddresses } from '../[slug]/mobileBookingForm';
 import { COUNTRIES, COUNTRY_CODES_ADDR } from '../account-settings/helpers';
 import { COUNTRY_FLAGS } from '../upcoming-bookings/shared';
 
-export default function PaymentMethodsSection({ userId, currency, onDirtyChange, ownerHint, showPaymentReminder, depositRequired = false }: { userId: string; currency?: string; onDirtyChange?: (dirty: boolean) => void; ownerHint?: boolean; showPaymentReminder?: boolean; depositRequired?: boolean }) {
+export default function PaymentMethodsSection({ userId, currency, onDirtyChange, ownerHint, showPaymentReminder, depositRequired = false, compactRail = false }: { userId: string; currency?: string; onDirtyChange?: (dirty: boolean) => void; ownerHint?: boolean; showPaymentReminder?: boolean; depositRequired?: boolean; compactRail?: boolean }) {
   const router = useRouter();
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   // What's actually in the database, held separately from `methods` (the live
@@ -1135,7 +1135,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           className="gdc-pay-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: '190px 1fr',
+            gridTemplateColumns: compactRail ? '76px 1fr' : '190px 1fr',
             gap: '1rem',
             margin: '1rem 0 .25rem',
             alignItems: 'start',
@@ -1162,9 +1162,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 title={blocked ? `${TILE_LABEL[k]} — ${(allowedCur as string[]).join('/')} only, not available for ${rateCurrency}` : TILE_LABEL[k]}
                 style={{
                   position: 'relative',
-                  display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '.6rem',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: compactRail ? 'center' : 'flex-start',
+                  gap: compactRail ? 0 : '.6rem',
                   width: '100%',
-                  padding: '.5rem .65rem',
+                  padding: compactRail ? '.5rem' : '.5rem .65rem',
                   borderRadius: 8,
                   // The open row is highlighted (teal-tinted fill + teal border);
                   // every other row is a plain list item on the panel background.
@@ -1191,18 +1193,22 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 >
                   {TILE_MARK[k]?.({ size: k === 'card' ? 10 : Math.min(TILE_MARK_SIZE[k] ?? DEFAULT_MARK_SIZE, 26) })}
                 </span>
-                {/* Method name beside its logo. */}
-                <span
-                  style={{
-                    flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    fontSize: '.82rem', fontWeight: 600,
-                    color: open ? 'var(--white,#fff)' : 'var(--muted,#c2c2d4)',
-                  }}
-                >
-                  {TILE_LABEL[k]}
-                </span>
+                {/* Method name beside its logo — hidden in compact (logos-only)
+                    mode used by the booking dashboard modal. */}
+                {!compactRail && (
+                  <span
+                    style={{
+                      flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      fontSize: '.82rem', fontWeight: 600,
+                      color: open ? 'var(--white,#fff)' : 'var(--muted,#c2c2d4)',
+                    }}
+                  >
+                    {TILE_LABEL[k]}
+                  </span>
+                )}
                 {/* Small green check when the rail is live (active). Hidden on a
-                    currency-blocked rail. */}
+                    currency-blocked rail. Inline beside the label; a corner badge
+                    in compact (logos-only) mode where there's no label row. */}
                 {live && !blocked && (
                   <span
                     aria-label="Active"
@@ -1211,6 +1217,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                       width: 14, height: 14,
                       borderRadius: '50%', background: '#22e3ad',
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      ...(compactRail ? { position: 'absolute', top: 3, right: 3 } : null),
                     }}
                   >
                     <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#042" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1238,8 +1245,10 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 onClick={() => { setOpenTile(null); setShowReminders(true); }}
                 title="Payment Reminders"
                 style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '.6rem', width: '100%',
-                  padding: '.5rem .65rem', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: compactRail ? 'center' : 'flex-start',
+                  gap: compactRail ? 0 : '.6rem', width: '100%',
+                  padding: compactRail ? '.5rem' : '.5rem .65rem', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
                   border: showReminders ? '1px solid rgba(34,227,173,.4)' : '1px solid rgba(255,255,255,.08)',
                   background: showReminders ? 'rgba(34,227,173,.1)' : 'transparent',
                   transition: 'background .12s ease, border-color .12s ease',
@@ -1250,9 +1259,11 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                     <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
                   </svg>
                 </span>
-                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '.82rem', fontWeight: 600, color: showReminders ? 'var(--white,#fff)' : 'var(--muted,#c2c2d4)' }}>
-                  Payment Reminders
-                </span>
+                {!compactRail && (
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '.82rem', fontWeight: 600, color: showReminders ? 'var(--white,#fff)' : 'var(--muted,#c2c2d4)' }}>
+                    Payment Reminders
+                  </span>
+                )}
               </button>
             </>
           )}
