@@ -900,7 +900,7 @@ export default function BookingDetails({
             return (
               <Fragment key={c.label}>
                 {showCaption && (
-                  <div style={{ marginTop: 14, marginBottom: 2, fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.58rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6a6a82' }}>Add-ons</div>
+                  <div style={{ marginTop: 14, marginBottom: 3, fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.55rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--neon, #00e0a4)', opacity: .85 }}>Add-ons</div>
                 )}
                 <div
                   className={`${styles.priceRow}${isTotal(c.label) ? ' ' + styles.priceRowTotal : ''}`}
