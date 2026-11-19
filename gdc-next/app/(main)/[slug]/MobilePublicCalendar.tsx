@@ -861,6 +861,19 @@ function SingleMonthView({
 }) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+  // "Booked for your …" note — white on a dark backing so it stays legible on
+  // both the red (fully-booked) cells and the dark available cells.
+  const myBookedNoteStyle: React.CSSProperties = {
+    marginTop: 3,
+    fontSize: 10,
+    lineHeight: 1.25,
+    fontWeight: 700,
+    color: '#fff',
+    background: 'rgba(0,0,0,.55)',
+    padding: '2px 5px',
+    borderRadius: 5,
+    maxWidth: '92%',
+  };
   const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   // The maximum date a visitor can book — today + bookingWindowMonths
   const maxDate = new Date(
@@ -1037,10 +1050,7 @@ function SingleMonthView({
       // a "Book" pill so they recognise it's their event.
       const mine = myBookedEvents.get(key)!;
       inner = (
-        <div
-          className={styles.bookedEventName}
-          style={{ color: 'var(--neon,#00e0a4)', lineHeight: 1.2 }}
-        >
+        <div style={myBookedNoteStyle}>
           Booked for your {mine.event}{mine.time ? ` · ${mine.time}` : ''}
         </div>
       );
@@ -1072,10 +1082,7 @@ function SingleMonthView({
       // they recognise it's their event (nobody else sees this).
       const mine = myBookedEvents.get(key)!;
       inner = (
-        <div
-          className={styles.bookedEventName}
-          style={{ color: 'var(--neon,#00e0a4)', lineHeight: 1.2 }}
-        >
+        <div style={myBookedNoteStyle}>
           Booked for your {mine.event}{mine.time ? ` · ${mine.time}` : ''}
         </div>
       );
@@ -1097,11 +1104,12 @@ function SingleMonthView({
     // inside). Pending-for-this-viewer cells stay inert to prevent
     // double-booking. Past, fully-booked, unavailable cells: no handler.
     const isPendingForViewerCell = !isOwnProfile && !!pendingDates?.has(key);
-    // The viewer's own approved booking day stays inert too — they've already
-    // booked it, so a stray tap shouldn't open a second request.
-    const isMyBookedCell = !isOwnProfile && !!myBookedEvents?.has(key);
+    // NOTE: a day the viewer already has an approved booking on stays CLICKABLE
+    // when it still has open capacity — there's no one-booking-per-host rule, so
+    // they can book this DJ again. The "Booked for your …" note just tells them
+    // they already have an event that day.
     const cellClickHandler =
-      !isOwnProfile && !readOnly && isAvail && !isPendingForViewerCell && !isMyBookedCell
+      !isOwnProfile && !readOnly && isAvail && !isPendingForViewerCell
         ? (e: React.MouseEvent) => onBookClick(key, e)
         : undefined;
 
