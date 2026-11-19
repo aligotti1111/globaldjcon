@@ -1031,6 +1031,19 @@ function SingleMonthView({
           })()}
         </div>
       );
+    } else if (!isOwnProfile && isAvail && myBookedEvents?.has(key)) {
+      // THIS viewer already has an APPROVED booking on this date, even though the
+      // day still has open capacity for others. Show the personal note instead of
+      // a "Book" pill so they recognise it's their event.
+      const mine = myBookedEvents.get(key)!;
+      inner = (
+        <div
+          className={styles.bookedEventName}
+          style={{ color: 'var(--neon,#00e0a4)', lineHeight: 1.2 }}
+        >
+          Booked for your {mine.event}{mine.time ? ` · ${mine.time}` : ''}
+        </div>
+      );
     } else if (!isOwnProfile && !readOnly && isAvail) {
       // Pending takes precedence over Book — if THIS viewer already has a
       // pending request on this date, show a non-clickable "Pending" pill.
@@ -1084,8 +1097,11 @@ function SingleMonthView({
     // inside). Pending-for-this-viewer cells stay inert to prevent
     // double-booking. Past, fully-booked, unavailable cells: no handler.
     const isPendingForViewerCell = !isOwnProfile && !!pendingDates?.has(key);
+    // The viewer's own approved booking day stays inert too — they've already
+    // booked it, so a stray tap shouldn't open a second request.
+    const isMyBookedCell = !isOwnProfile && !!myBookedEvents?.has(key);
     const cellClickHandler =
-      !isOwnProfile && !readOnly && isAvail && !isPendingForViewerCell
+      !isOwnProfile && !readOnly && isAvail && !isPendingForViewerCell && !isMyBookedCell
         ? (e: React.MouseEvent) => onBookClick(key, e)
         : undefined;
 
