@@ -2033,10 +2033,27 @@ export default function MobileBookingForm({
               // in); the chosen mobile add-ons are added on their own lines below.
               const pkgBase = priceResult.price ?? 0;
               const pkgName = ((selectedPkg as { title?: string } | null)?.title || '').trim() || 'Package';
+              // When a discount is live, each charge shows its ORIGINAL price
+              // struck through next to the discounted price. The discount is
+              // spread across the lines in proportion to each (factor = the
+              // post-discount subtotal over the pre-discount subtotal), so the
+              // struck/discounted lines still sum to the real total below. The
+              // separate "Discount" summary line is dropped in that case, since
+              // every line already shows its own markdown.
+              const hasDisc = discount.amount > 0 && basePrice != null && basePrice > 0;
+              const factor = hasDisc ? (discountedTotal as number) / (basePrice as number) : 1;
+              const priceCell = (orig: number, prefix = '') => hasDisc ? (
+                <span>
+                  <s style={{ color: 'var(--muted,#8a8aa0)', textDecorationColor: 'var(--muted,#8a8aa0)', marginRight: 6 }}>{prefix}{money2(orig)}</s>
+                  <span style={{ color: 'var(--neon,#00e0a4)' }}>{prefix}{money2(orig * factor)}</span>
+                </span>
+              ) : (
+                <span>{prefix}{money2(orig)}</span>
+              );
               return (
-              <div style={{ maxWidth: 260, margin: '12px auto 0', textAlign: 'left' }}>
+              <div style={{ maxWidth: 300, margin: '12px auto 0', textAlign: 'left' }}>
                 <div style={rowStyle}>
-                  <span>{pkgName}</span><span>{money2(pkgBase)}</span>
+                  <span>{pkgName}</span>{priceCell(pkgBase)}
                 </div>
                 {selectedAddons.map((origIdx) => {
                   const a = mobAddons.find((x) => x._idx === origIdx);
@@ -2044,13 +2061,13 @@ export default function MobileBookingForm({
                   const p = Number(a.price);
                   return (
                     <div key={origIdx} style={rowStyle}>
-                      <span>{a.title}</span><span>+{money2(Number.isFinite(p) ? p : 0)}</span>
+                      <span>{a.title}</span>{priceCell(Number.isFinite(p) ? p : 0, '+')}
                     </div>
                   );
                 })}
                 {discount.amount > 0 && (
                   <div style={{ ...rowStyle, color: 'var(--neon,#00e0a4)' }}>
-                    <span>Discount</span><span>−{money2(discount.amount)}</span>
+                    <span>Total saving</span><span>−{money2(discount.amount)}</span>
                   </div>
                 )}
                 {taxPct > 0 && (
