@@ -879,15 +879,16 @@ function SingleMonthView({
     bottom: 4,
     left: '50%',
     transform: 'translateX(-50%)',
-    fontSize: isNarrow ? 8 : 10,
+    fontSize: isNarrow ? 7 : 8.5,
     lineHeight: 1.2,
     fontWeight: 700,
     textAlign: 'center',
+    whiteSpace: 'nowrap',
     color: '#fff',
     background: 'rgba(0,0,0,.55)',
     padding: isNarrow ? '1px 3px' : '2px 5px',
     borderRadius: 5,
-    maxWidth: '94%',
+    maxWidth: '98%',
     pointerEvents: 'none',
   };
   const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
