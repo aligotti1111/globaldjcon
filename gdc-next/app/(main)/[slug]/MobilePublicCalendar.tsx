@@ -861,18 +861,28 @@ function SingleMonthView({
 }) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+  // On phones the cells are tiny, so the "Booked for your …" note drops the
+  // time and uses smaller text to fit.
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const on = () => setIsNarrow(mq.matches);
+    on();
+    mq.addEventListener?.('change', on);
+    return () => mq.removeEventListener?.('change', on);
+  }, []);
   // "Booked for your …" note — white on a dark backing so it stays legible on
   // both the red (fully-booked) cells and the dark available cells.
   const myBookedNoteStyle: React.CSSProperties = {
     marginTop: 3,
-    fontSize: 10,
-    lineHeight: 1.25,
+    fontSize: isNarrow ? 8 : 10,
+    lineHeight: 1.2,
     fontWeight: 700,
     color: '#fff',
     background: 'rgba(0,0,0,.55)',
-    padding: '2px 5px',
+    padding: isNarrow ? '1px 3px' : '2px 5px',
     borderRadius: 5,
-    maxWidth: '92%',
+    maxWidth: '96%',
   };
   const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   // The maximum date a visitor can book — today + bookingWindowMonths
@@ -1053,7 +1063,7 @@ function SingleMonthView({
       inner = (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <div style={myBookedNoteStyle}>
-            Booked for your {mine.event}{mine.time ? ` · ${mine.time}` : ''}
+            Booked for your {mine.event}{!isNarrow && mine.time ? ` · ${mine.time}` : ''}
           </div>
           {!readOnly && (
             <div
@@ -1095,7 +1105,7 @@ function SingleMonthView({
       const mine = myBookedEvents.get(key)!;
       inner = (
         <div style={myBookedNoteStyle}>
-          Booked for your {mine.event}{mine.time ? ` · ${mine.time}` : ''}
+          Booked for your {mine.event}{!isNarrow && mine.time ? ` · ${mine.time}` : ''}
         </div>
       );
     } else if (
