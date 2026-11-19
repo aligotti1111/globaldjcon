@@ -1682,10 +1682,10 @@ select.input {
   gap: 14px;
   padding: 4px 0;
 }
-.priceKey { color: var(--muted); font-size: .88rem; }
+.priceKey { color: #b8b8cc; font-size: .96rem; }
 .priceVal {
   color: var(--white);
-  font-size: .9rem;
+  font-size: .98rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
