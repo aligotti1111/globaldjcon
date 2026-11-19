@@ -61,6 +61,9 @@ export interface UpcomingEvent {
   total_with_tax?: number | null;
   deposit_pct?: number | null;
   deposit_amount?: number | null;
+  discount_amount?: number | null;
+  discount_code?: string | null;
+  discount_label?: string | null;
   package_details?: string | null;
   addons?: unknown;
   cocktail_price?: number | null;
@@ -120,7 +123,7 @@ export default async function UpcomingEventsPage() {
   // (or, for manual events, the user who recorded it).
   const { data: rows } = await supabase
     .from('bookings')
-    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, total_with_tax, tax_pct, tax_amount, counter_rate, quoted_rate, package_details, addons, cocktail_price, ceremony_price, cancel_status, cancel_response_note, status_overrides')
+    .select('id, event_date, start_time, end_time, venue_name, venue_address, venue_lat, venue_lon, venue_type, event_type, booking_type, is_manual, dj_id, flyer_url, link_url, link_label, notes, status, created_at, offer_amount, currency, room_details, guest_count, phone, package_title, cocktail_needed, cocktail_start_time, cocktail_same_room, ceremony_needed, ceremony_start_time, ceremony_same_room, contract_status, deposit_pct, deposit_amount, planner_status, total_with_tax, tax_pct, tax_amount, counter_rate, quoted_rate, discount_amount, discount_code, discount_label, package_details, addons, cocktail_price, ceremony_price, cancel_status, cancel_response_note, status_overrides')
     .eq('requester_id', user.id)
     .gte('event_date', today)
     .or('status.eq.approved,status.eq.cancelled,is_manual.eq.true')
