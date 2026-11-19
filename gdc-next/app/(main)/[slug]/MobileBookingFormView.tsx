@@ -2063,12 +2063,12 @@ export default function MobileBookingForm({
                     charges on top (they don't add to the total). */}
                 {priceResult.cocktailAddon > 0 && (
                   <div style={{ ...rowStyle, paddingLeft: 16, paddingTop: 1, paddingBottom: 1, fontSize: '.78rem', color: 'var(--muted,#8a8aa0)' }}>
-                    <span>Cocktail hour</span><span>+{money2(priceResult.cocktailAddon)}</span>
+                    <span>Cocktail hour</span>{priceCell(priceResult.cocktailAddon, '+')}
                   </div>
                 )}
                 {(priceResult.ceremonyAddon ?? 0) > 0 && (
                   <div style={{ ...rowStyle, paddingLeft: 16, paddingTop: 1, paddingBottom: 1, fontSize: '.78rem', color: 'var(--muted,#8a8aa0)' }}>
-                    <span>Ceremony music</span><span>+{money2(priceResult.ceremonyAddon ?? 0)}</span>
+                    <span>Ceremony music</span>{priceCell(priceResult.ceremonyAddon ?? 0, '+')}
                   </div>
                 )}
                 {selectedAddons.map((origIdx) => {
