@@ -1045,13 +1045,25 @@ function SingleMonthView({
         </div>
       );
     } else if (!isOwnProfile && isAvail && myBookedEvents?.has(key)) {
-      // THIS viewer already has an APPROVED booking on this date, even though the
-      // day still has open capacity for others. Show the personal note instead of
-      // a "Book" pill so they recognise it's their event.
+      // THIS viewer already has an APPROVED booking on this date, but the day
+      // still has open capacity — so they see BOTH a personal "Booked for your…"
+      // note AND a Book button, since there's no one-booking-per-host rule and
+      // they may want to book this DJ again.
       const mine = myBookedEvents.get(key)!;
       inner = (
-        <div style={myBookedNoteStyle}>
-          Booked for your {mine.event}{mine.time ? ` · ${mine.time}` : ''}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          <div style={myBookedNoteStyle}>
+            Booked for your {mine.event}{mine.time ? ` · ${mine.time}` : ''}
+          </div>
+          {!readOnly && (
+            <div
+              className={styles.bookBadge}
+              onClick={(e) => { e.stopPropagation(); onBookClick(key, e); }}
+              role="button"
+            >
+              Book
+            </div>
+          )}
         </div>
       );
     } else if (!isOwnProfile && !readOnly && isAvail) {
