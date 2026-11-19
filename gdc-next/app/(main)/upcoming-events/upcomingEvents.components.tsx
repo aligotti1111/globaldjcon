@@ -216,7 +216,7 @@ export function EventRow({
   // Pricing breakdown rows for the bottom card — the same receipt the DJ sees:
   // Agreed Rate → Tax → Total (with tax), then a separated Payment schedule band
   // with Deposit and Balance due day of event.
-  type PriceRow = { label: string; value: string; total?: boolean; schedule?: boolean };
+  type PriceRow = { label: string; value: string; total?: boolean; schedule?: boolean; saving?: boolean };
   const pricingRows: PriceRow[] = (() => {
     const raw = event as unknown as {
       counter_rate?: number | null;
@@ -226,6 +226,9 @@ export function EventRow({
       tax_amount?: number | null;
       deposit_pct?: number | null;
       deposit_amount?: number | null;
+      discount_amount?: number | null;
+      discount_code?: string | null;
+      discount_label?: string | null;
     };
     // Agreed rate: same source order the DJ card uses (offer_amount alone is
     // frequently null; the real number lives in counter_rate / quoted_rate).
@@ -280,6 +283,17 @@ export function EventRow({
     }
 
     rows.push({ label: 'Total (with tax)', value: money(total), total: true });
+
+    // Sale / promo-code saving, tucked under the Total (not itemized above it).
+    const discAmt = raw.discount_amount != null ? Number(raw.discount_amount) : 0;
+    if (discAmt > 0) {
+      const code = (raw.discount_code || '').trim();
+      rows.push({
+        label: code ? `Promo Code: ${raw.discount_label || code}` : 'Total savings',
+        value: `−${money(discAmt)}`,
+        saving: true,
+      });
+    }
 
     // Payment schedule — deposit (from a stored amount or the % of the total)
     // and the balance owed on the day of the event.
@@ -707,9 +721,13 @@ export function EventRow({
               <div className={`${dj.detailSection} ${dj.detailSectionPricing}`}>
                 <div className={dj.detailChip}><span>Pricing</span></div>
                 {mainRows.map((r) => (
-                  <div key={r.label} className={`${dj.priceRow}${r.total ? ' ' + dj.priceRowTotal : ''}`}>
-                    <span className={dj.priceKey}>{r.label}</span>
-                    <span className={dj.priceVal}>{r.value}</span>
+                  <div
+                    key={r.label}
+                    className={`${dj.priceRow}${r.total ? ' ' + dj.priceRowTotal : ''}`}
+                    style={r.saving ? { paddingTop: 1, fontSize: '.8rem' } : undefined}
+                  >
+                    <span className={dj.priceKey} style={r.saving ? { color: 'var(--neon,#00e0a4)' } : undefined}>{r.label}</span>
+                    <span className={dj.priceVal} style={r.saving ? { color: 'var(--neon,#00e0a4)' } : undefined}>{r.value}</span>
                   </div>
                 ))}
                 {scheduleRows.length > 0 && (
