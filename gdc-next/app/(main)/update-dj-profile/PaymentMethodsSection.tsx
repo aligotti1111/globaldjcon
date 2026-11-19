@@ -1135,7 +1135,7 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
           className="gdc-pay-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: '76px 1fr',
+            gridTemplateColumns: '190px 1fr',
             gap: '1rem',
             margin: '1rem 0 .25rem',
             alignItems: 'start',
@@ -1162,9 +1162,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 title={blocked ? `${TILE_LABEL[k]} — ${(allowedCur as string[]).join('/')} only, not available for ${rateCurrency}` : TILE_LABEL[k]}
                 style={{
                   position: 'relative',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '.6rem',
                   width: '100%',
-                  padding: '.5rem',
+                  padding: '.5rem .65rem',
                   borderRadius: 8,
                   // The open row is highlighted (teal-tinted fill + teal border);
                   // every other row is a plain list item on the panel background.
@@ -1191,13 +1191,23 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 >
                   {TILE_MARK[k]?.({ size: k === 'card' ? 10 : Math.min(TILE_MARK_SIZE[k] ?? DEFAULT_MARK_SIZE, 26) })}
                 </span>
-                {/* Small green check badge in the corner when the rail is live
-                    (active). Hidden on a currency-blocked rail. */}
+                {/* Method name beside its logo. */}
+                <span
+                  style={{
+                    flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    fontSize: '.82rem', fontWeight: 600,
+                    color: open ? 'var(--white,#fff)' : 'var(--muted,#c2c2d4)',
+                  }}
+                >
+                  {TILE_LABEL[k]}
+                </span>
+                {/* Small green check when the rail is live (active). Hidden on a
+                    currency-blocked rail. */}
                 {live && !blocked && (
                   <span
                     aria-label="Active"
                     style={{
-                      position: 'absolute', top: 3, right: 3,
+                      flexShrink: 0,
                       width: 14, height: 14,
                       borderRadius: '50%', background: '#22e3ad',
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -1228,8 +1238,8 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                 onClick={() => { setOpenTile(null); setShowReminders(true); }}
                 title="Payment Reminders"
                 style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%',
-                  padding: '.5rem', borderRadius: 8, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '.6rem', width: '100%',
+                  padding: '.5rem .65rem', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
                   border: showReminders ? '1px solid rgba(34,227,173,.4)' : '1px solid rgba(255,255,255,.08)',
                   background: showReminders ? 'rgba(34,227,173,.1)' : 'transparent',
                   transition: 'background .12s ease, border-color .12s ease',
@@ -1239,6 +1249,9 @@ export default function PaymentMethodsSection({ userId, currency, onDirtyChange,
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
                   </svg>
+                </span>
+                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '.82rem', fontWeight: 600, color: showReminders ? 'var(--white,#fff)' : 'var(--muted,#c2c2d4)' }}>
+                  Payment Reminders
                 </span>
               </button>
             </>
