@@ -89,6 +89,10 @@ interface Props {
   // else still sees "Book", and the date stays open for the DJ. Empty for
   // logged-out viewers and the profile owner.
   pendingDates?: Set<string>;
+  // Dates (YYYY-MM-DD) where the CURRENT viewer already has an APPROVED booking
+  // with this DJ, mapped to the event label + time. On those days this viewer
+  // sees a "Booked for your <event> · <time>" note (nobody else does).
+  myBookedEvents?: Map<string, { event: string; time: string }>;
   // Called after the booker successfully submits a request, so the parent
   // can refetch pendingDates and the just-booked date flips to "Pending".
   onBookingSubmitted?: () => void;
@@ -149,6 +153,7 @@ export default function MobilePublicCalendar({
   onShareClick,
   force12mo,
   pendingDates,
+  myBookedEvents,
   onBookingSubmitted,
   readOnly = false,
   ownerToggle,
@@ -680,6 +685,7 @@ export default function MobilePublicCalendar({
           onShareClick={onShareClick}
           ownerToggle={ownerToggle}
           pendingDates={pendingDates}
+          myBookedEvents={myBookedEvents}
         />
       )}
 
@@ -825,6 +831,7 @@ function SingleMonthView({
   onShareClick,
   ownerToggle,
   pendingDates,
+  myBookedEvents,
 }: {
   year: number;
   month: number;
@@ -849,6 +856,8 @@ function SingleMonthView({
   ownerToggle?: React.ReactNode;
   // Dates the current viewer has a pending request on — render "Pending".
   pendingDates?: Set<string>;
+  // Dates the current viewer has an APPROVED booking on → "Booked for your …".
+  myBookedEvents?: Map<string, { event: string; time: string }>;
 }) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -1043,6 +1052,18 @@ function SingleMonthView({
           role="button"
         >
           Book
+        </div>
+      );
+    } else if (!isOwnProfile && isBooked && myBookedEvents?.has(key)) {
+      // THIS viewer's own approved booking on a booked day → a personal note so
+      // they recognise it's their event (nobody else sees this).
+      const mine = myBookedEvents.get(key)!;
+      inner = (
+        <div
+          className={styles.bookedEventName}
+          style={{ color: 'var(--neon,#00e0a4)', lineHeight: 1.2 }}
+        >
+          Booked for your {mine.event}{mine.time ? ` · ${mine.time}` : ''}
         </div>
       );
     } else if (
