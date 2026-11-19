@@ -22,8 +22,8 @@ export const runtime = 'nodejs';
 // instructions column OUT of this read means a not-yet-migrated DB (no
 // booking_bot_instructions column) can never break eligibility and wrongly show
 // the upgrade prompt to a paid account.
-const COLS = 'booking_bot_enabled, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source';
-interface Row extends AccessFields { booking_bot_enabled: boolean | null }
+const COLS = 'booking_bot_enabled, dj_type, sub_tier, sub_status, sub_period_end, comp_tier, comp_expires_at, comp_source';
+interface Row extends AccessFields { booking_bot_enabled: boolean | null; dj_type: string | null }
 
 // Best-effort read of the custom-instructions column: if the column doesn't
 // exist yet, swallow the error and return '' rather than failing the request.
@@ -65,6 +65,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     enabled: data?.booking_bot_enabled === true,
+    djType: data?.dj_type || 'mobile',
     instructions,
     siteUrl: site.url,
     siteFetchedAt: site.fetchedAt,
