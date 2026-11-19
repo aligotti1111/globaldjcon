@@ -172,6 +172,7 @@ function DateField({
   const label = value ? new Date(`${value}T00:00:00`).toLocaleDateString() : placeholder;
   return (
     <div
+      onClick={disabled ? undefined : openPickerNow}
       style={{
         position: 'relative', width: '100%', height, boxSizing: 'border-box',
         display: 'flex', alignItems: 'center', gap: 8, padding: '0 10px',
@@ -195,9 +196,12 @@ function DateField({
           type="date"
           min={min}
           value={value || ''}
-          onClick={openPickerNow}
           onChange={(e) => { onChange(e.target.value || null); e.currentTarget.blur(); }}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', border: 0, padding: 0, margin: 0, colorScheme: 'dark' }}
+          // pointer-events off: the wrapping box is the single click target that
+          // opens the picker (via showPicker on this ref). Letting the input also
+          // receive the click double-fired the open, so it flashed open then shut.
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, pointerEvents: 'none', border: 0, padding: 0, margin: 0, colorScheme: 'dark' }}
+          tabIndex={-1}
         />
       )}
     </div>
