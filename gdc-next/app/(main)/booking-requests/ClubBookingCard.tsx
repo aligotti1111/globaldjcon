@@ -328,7 +328,9 @@ export default function ClubBookingCard(props: Props) {
                       {sym}{Number(b.original_rate ?? Number(b.quoted_rate) + b.discount_amount).toLocaleString()}
                     </span>{' '}
                     <span style={{ color: 'var(--neon)' }}>
-                      {b.discount_label || 'Discount'} (−{sym}{Number(b.discount_amount).toLocaleString()})
+                      {((b as { discount_code?: string | null }).discount_code || '').trim()
+                        ? `Promo Code: ${b.discount_label || (b as { discount_code?: string | null }).discount_code}`
+                        : 'Total savings'} (−{sym}{Number(b.discount_amount).toLocaleString()})
                     </span>
                   </div>
                 )}
