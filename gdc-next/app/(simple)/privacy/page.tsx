@@ -1,9 +1,9 @@
 // Privacy Policy page.
 // Static — no data fetching, no client-side JS. Renders as plain HTML on the
 // server. Covers event-planning data (planner / rider / guest list), open &
-// page-view tracking, capability-link sharing, and the current subprocessors
-// (Supabase, Resend, Twilio, Netlify, Cloudflare, Stripe, DocuSeal, Deezer,
-// Odesli).
+// page-view tracking, capability-link sharing, AI features (Anthropic), and the
+// current subprocessors (Supabase, Resend, Twilio, Netlify, Cloudflare, Stripe,
+// DocuSeal, Deezer, Odesli, Anthropic).
 
 import Link from 'next/link';
 import type { Metadata } from 'next';
@@ -23,7 +23,7 @@ export default function PrivacyPage() {
 
       <div className={styles.page}>
         <h1 className={styles.title}>Privacy Policy</h1>
-        <div className={styles.updated}>Last updated: August 15, 2026</div>
+        <div className={styles.updated}>Last updated: November 20, 2026</div>
 
         <div className={styles.section}>
           <p>
@@ -100,6 +100,7 @@ export default function PrivacyPage() {
             <li>Other users as necessary to facilitate bookings (e.g., your name and contact details shared with a DJ you book)</li>
             <li>Service providers who help us operate the platform, including Supabase (database and authentication), Resend (email delivery), Twilio (SMS delivery), Netlify (hosting), Cloudflare (content delivery and security), Stripe (card payment processing), and DocuSeal (electronic contract signing)</li>
             <li>Deezer and Odesli (song.link), which we use to power song search and to resolve music links &mdash; the words you type into a song search and the track links you select are sent to these services to return results</li>
+            <li>Anthropic, which powers our optional AI features (the booking assistant, the DJ assistant, and the planner&apos;s song suggestions) &mdash; the messages and questions you type into these features are sent to Anthropic to generate a response</li>
             <li>Law enforcement or government agencies if required by law</li>
           </ul>
           <p>
@@ -114,6 +115,24 @@ export default function PrivacyPage() {
             calendar. If a DJ does so, booking details (including the Client&apos;s name, event date, venue, and related
             notes) are sent to the calendar provider the DJ chooses, such as Google Calendar or Apple Calendar. That
             provider&apos;s own privacy policy governs how it handles the data.
+          </p>
+
+          <h2>AI Features</h2>
+          <p>
+            The Platform offers optional features powered by artificial intelligence: a booking assistant chat on DJ
+            profiles, an in-app assistant for DJs, and automated song and planning suggestions in the event planner. When
+            you use one of these features, the text you enter &mdash; such as the questions and messages you type, along
+            with limited context needed to answer them &mdash; is sent to our AI provider, Anthropic, to generate a
+            response. The booking assistant on a public DJ profile can be used without an account, so if you chat with it
+            we receive and process what you type even if you are not logged in.
+          </p>
+          <p>
+            Anthropic processes this information under its own terms as our service provider. Information submitted to our
+            AI features through the API is not used by Anthropic to train its models. We use these features only to
+            provide the assistant and planning functionality; we do not use them for advertising and we do not sell this
+            information. Please avoid entering sensitive personal information you would not want processed this way. AI
+            responses are generated automatically and may be inaccurate; our <Link href="/terms">Terms &amp; Conditions</Link>{' '}
+            describe the limits that apply to them.
           </p>
 
           <h2>Event Planning Tools and Shared Links</h2>
