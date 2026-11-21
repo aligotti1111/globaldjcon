@@ -698,6 +698,8 @@ export function EventRow({
               return (
               <div className={dj.detailSection} style={{ gridColumn: '1 / -1' }}>
                 <div className={dj.detailChip}><span>Package</span></div>
+                {/* Subtle divider under the chip — matches the DJ booking card. */}
+                <div style={{ borderTop: '1px solid var(--border,rgba(255,255,255,0.1))', margin: '12px 0 0' }} />
                 {event.package_title?.trim() && (
                   <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginTop: 12 }}>
                     {event.package_title.trim()}
