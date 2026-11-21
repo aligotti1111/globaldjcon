@@ -402,6 +402,12 @@ export default async function UpcomingBookingsPage({
     noteAct(r.id, signedAt);
   }
   const activityCount = Object.keys(actAt).length;
+  // The activity timestamps across ALL of this DJ's bookings (one per booking
+  // that has a host action), so the client can show a badge of only the
+  // activity NEWER than the last time the DJ reviewed the New-activity view —
+  // the same "last seen" model the header bell uses, instead of a standing
+  // count that never clears.
+  const activityAts: string[] = Object.values(actAt).map((ms) => new Date(ms).toISOString());
 
   // ── Dashboard stats, overlaps, and a light booking list — computed over the
   // FULL set (not just this page) so the desktop stat boxes, the same-day
@@ -701,6 +707,7 @@ export default async function UpcomingBookingsPage({
       serverPageSize={UP_PAGE_SIZE}
       initialSort={sortMode}
       activityTotal={activityCount}
+      activityAts={activityAts}
       upcomingTotal={allIds.length}
       serverStats={dashStats}
       serverOverlapIds={overlapIds}
