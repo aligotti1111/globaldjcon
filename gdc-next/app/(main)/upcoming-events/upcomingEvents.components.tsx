@@ -278,8 +278,9 @@ export function EventRow({
       ? Math.max(0, raw.tax_amount)
       : (hasRate ? Math.max(0, Math.round((total - rate!) * 100) / 100) : 0);
     if (taxAmt > 0) {
-      const pct = raw.tax_pct != null ? ` (${raw.tax_pct}%)` : '';
-      rows.push({ label: 'Tax', value: `${money(taxAmt)}${pct}` });
+      // Percent before the amount — "(8.875%) $53.25" — to match the DJ receipt.
+      const pct = raw.tax_pct != null ? `(${raw.tax_pct}%) ` : '';
+      rows.push({ label: 'Tax', value: `${pct}${money(taxAmt)}` });
     }
 
     rows.push({ label: 'Total Event Cost', value: money(total), total: true });
