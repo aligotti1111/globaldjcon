@@ -526,13 +526,14 @@ export default function MobileBookingCard(props: Props) {
             {taxAmt > 0 && row(`Sales tax (${taxPct}%)`, money2(taxAmt))}
             {row('Total Event Cost (with tax)', money2(totalWithTax), true)}
             {/* Saving sits tucked right under the Total (not as an itemized
-                line). A promo code shows "Promo Code: CODE (X% off)"; the DJ's
-                account-wide sale (no code) shows "Total savings". */}
+                line), and says WHY: a promo code the host entered ("Promo Code:
+                CODE") vs the DJ's account-wide sale (no code — its name is kept
+                in discount_label, shown as "Site Promotion: NAME"). */}
             {bt.discount_amount != null && Number(bt.discount_amount) > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '1px 0 0', fontSize: 12.5, color: 'var(--neon)' }}>
                 <span>{(bt.discount_code || '').trim()
                   ? `Promo Code: ${bt.discount_label || (bt.discount_code || '').trim()}`
-                  : 'Total savings'}</span>
+                  : ((bt.discount_label || '').trim() ? `Site Promotion: ${(bt.discount_label || '').trim()}` : 'Site-wide Promotion')}</span>
                 <span>−{money2(Number(bt.discount_amount))}</span>
               </div>
             )}
