@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { UpcomingEvent } from './page';
@@ -216,7 +216,7 @@ export function EventRow({
   // Pricing breakdown rows for the bottom card — the same receipt the DJ sees:
   // Agreed Rate → Tax → Total (with tax), then a separated Payment schedule band
   // with Deposit and Balance due day of event.
-  type PriceRow = { label: string; value: string; total?: boolean; schedule?: boolean; saving?: boolean };
+  type PriceRow = { label: string; value: string; total?: boolean; schedule?: boolean; saving?: boolean; addon?: boolean };
   const pricingRows: PriceRow[] = (() => {
     const raw = event as unknown as {
       counter_rate?: number | null;
@@ -261,12 +261,12 @@ export function EventRow({
     if (hasRate) {
       if (itemized) {
         const base = Math.max(0, Math.round((rate! - cocktailCharge - ceremonyCharge - addonSum) * 100) / 100);
-        rows.push({ label: 'Agreed Rate', value: money(base) });
+        rows.push({ label: 'Package price', value: money(base) });
         if (ceremonyCharge > 0) rows.push({ label: 'Ceremony', value: money(ceremonyCharge) });
         if (cocktailCharge > 0) rows.push({ label: 'Cocktail Hour', value: money(cocktailCharge) });
-        bookingAddons.forEach((a) => rows.push({ label: a.title, value: money(a.price) }));
+        bookingAddons.forEach((a) => rows.push({ label: a.title, value: money(a.price), addon: true }));
       } else {
-        rows.push({ label: 'Agreed Rate', value: money(rate!) });
+        rows.push({ label: 'Package price', value: money(rate!) });
       }
     }
 
@@ -282,7 +282,7 @@ export function EventRow({
       rows.push({ label: 'Tax', value: `${money(taxAmt)}${pct}` });
     }
 
-    rows.push({ label: 'Total (with tax)', value: money(total), total: true });
+    rows.push({ label: 'Total Event Cost', value: money(total), total: true });
 
     // Sale / promo-code saving, tucked under the Total (not itemized above it).
     const discAmt = raw.discount_amount != null ? Number(raw.discount_amount) : 0;
@@ -715,21 +715,35 @@ export function EventRow({
               );
             })()}
 
-            {/* Pricing — the DJ's exact receipt: Agreed Rate → Tax → Total, then
-                a separated Payment schedule band (Deposit / Balance). */}
-            {mainRows.length > 0 && (
+            {/* Pricing — the DJ's exact receipt: Package price → (Add-ons) → Tax
+                → Total Event Cost, then a separated Payment schedule band
+                (Deposit / Balance). Add-ons get a muted "Add-ons" caption and Tax
+                is set apart, matching the DJ booking card exactly. */}
+            {mainRows.length > 0 && (() => {
+              const anyAddon = mainRows.some((r) => r.addon);
+              let addonCaptionShown = false;
+              return (
               <div className={`${dj.detailSection} ${dj.detailSectionPricing}`}>
                 <div className={dj.detailChip}><span>Pricing</span></div>
-                {mainRows.map((r) => (
-                  <div
-                    key={r.label}
-                    className={`${dj.priceRow}${r.total ? ' ' + dj.priceRowTotal : ''}`}
-                    style={r.saving ? { paddingTop: 1, fontSize: '.8rem' } : undefined}
-                  >
-                    <span className={dj.priceKey} style={r.saving ? { color: 'var(--neon,#00e0a4)' } : undefined}>{r.label}</span>
-                    <span className={dj.priceVal} style={r.saving ? { color: 'var(--neon,#00e0a4)' } : undefined}>{r.value}</span>
-                  </div>
-                ))}
+                {mainRows.map((r) => {
+                  const showCaption = !!r.addon && !addonCaptionShown;
+                  if (showCaption) addonCaptionShown = true;
+                  const isTaxRow = r.label === 'Tax';
+                  return (
+                  <Fragment key={r.label}>
+                    {showCaption && (
+                      <div style={{ marginTop: 14, marginBottom: 3, fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.55rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--neon, #00e0a4)', opacity: .85 }}>Add-ons</div>
+                    )}
+                    <div
+                      className={`${dj.priceRow}${r.total ? ' ' + dj.priceRowTotal : ''}`}
+                      style={r.saving ? { paddingTop: 1, fontSize: '.8rem' } : (isTaxRow && anyAddon ? { marginTop: 14 } : undefined)}
+                    >
+                      <span className={dj.priceKey} style={r.saving ? { color: 'var(--neon,#00e0a4)' } : undefined}>{r.label}</span>
+                      <span className={dj.priceVal} style={r.saving ? { color: 'var(--neon,#00e0a4)' } : undefined}>{r.value}</span>
+                    </div>
+                  </Fragment>
+                  );
+                })}
                 {scheduleRows.length > 0 && (
                   <div className={dj.paySched}>
                     <div className={dj.schedLbl}>Payment schedule</div>
@@ -742,7 +756,8 @@ export function EventRow({
                   </div>
                 )}
               </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Request cancellation — host asks the DJ to cancel (mirrors the DJ's
