@@ -71,13 +71,24 @@ export default function UpcomingEventsClient({
   // new time for next visit without clearing this session's tags.
   const SEEN_KEY = 'gdc_host_activity_seen';
   const [seenAt, setSeenAt] = useState<string | null>(null);
+  // The "New activity (N)" badge counts only activity the host hasn't reviewed
+  // yet, and clears the moment they open the activity view — the same seen-key
+  // model the DJ dashboard uses. It's kept separate from `seenAt` (which freezes
+  // at the prior view time so this session's per-row NEW tags don't vanish the
+  // instant the view opens).
+  const [badgeSeenT, setBadgeSeenT] = useState<number>(Number.NEGATIVE_INFINITY);
   const wroteSeen = useRef(false);
   useEffect(() => {
-    try { setSeenAt(localStorage.getItem(SEEN_KEY)); } catch { /* ignore */ }
+    try {
+      const v = localStorage.getItem(SEEN_KEY);
+      setSeenAt(v);
+      setBadgeSeenT(v ? Date.parse(v) : Number.NEGATIVE_INFINITY);
+    } catch { /* ignore */ }
   }, []);
   useEffect(() => {
     if (sortMode === 'activity' && !wroteSeen.current) {
       wroteSeen.current = true;
+      setBadgeSeenT(Date.now()); // clear the badge immediately on review
       try { localStorage.setItem(SEEN_KEY, new Date().toISOString()); } catch { /* ignore */ }
     }
   }, [sortMode]);
@@ -170,7 +181,14 @@ export default function UpcomingEventsClient({
     />
   );
 
-  const activityCount = activityList.length;
+  // Badge = only the activity the host hasn't reviewed yet (newer than the last
+  // time they opened the view), so it clears on review and reappears on new DJ
+  // activity — matching the DJ dashboard. The full activity LIST still shows
+  // every acted-on event regardless.
+  const activityCount = activityList.reduce(
+    (n, e) => (Date.parse(activityAt[e.id] || '') > badgeSeenT ? n + 1 : n),
+    0,
+  );
   const focusedEvent = focusId ? events.find((e) => e.id === focusId) || null : null;
 
   return (
@@ -196,7 +214,7 @@ export default function UpcomingEventsClient({
       <>
       {/* By date / New activity toggle — mirrors the DJ dashboard. Shown once
           there's any activity (or the activity view is already open). */}
-      {(activityCount > 0 || sortMode === 'activity') && (
+      {(activityList.length > 0 || sortMode === 'activity') && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
           {([['date', 'By date'], ['activity', `New activity${activityCount ? ` (${activityCount})` : ''}`]] as const).map(([mode, text]) => {
             const on = sortMode === mode;
@@ -227,7 +245,7 @@ export default function UpcomingEventsClient({
           <p className={styles.emptyHint}>{emptyHint}</p>
         </div>
       ) : sortMode === 'activity' ? (
-        activityCount === 0 ? (
+        activityList.length === 0 ? (
           <div className={styles.empty}>
             <p>No new activity.</p>
             <p className={styles.emptyHint}>Updates from your DJ show up here.</p>
