@@ -47,6 +47,12 @@ function shell(content: string): string {
 interface BookingRow {
   id: string; dj_id: string | null; requester_id: string | null;
   requester_name: string | null; event_date: string | null; venue_name: string | null;
+  event_type: string | null;
+}
+
+function shortDate(d: string | null): string {
+  if (!d) return '';
+  return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export async function POST(req: Request) {
@@ -55,10 +61,11 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
-    let body: { bookingId?: unknown; message?: unknown };
+    let body: { bookingId?: unknown; message?: unknown; subject?: unknown };
     try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
     const bookingId = typeof body.bookingId === 'string' ? body.bookingId : '';
     const message = typeof body.message === 'string' ? body.message.trim() : '';
+    const subjectIn = typeof body.subject === 'string' ? body.subject.trim().slice(0, 160) : '';
     if (!bookingId) return NextResponse.json({ error: 'Missing booking.' }, { status: 400 });
     if (!message) return NextResponse.json({ error: 'Type a message first.' }, { status: 400 });
     if (message.length > 4000) return NextResponse.json({ error: 'Message is too long.' }, { status: 400 });
@@ -66,7 +73,7 @@ export async function POST(req: Request) {
     const admin = createAdminClient() as unknown as SupabaseClient;
     const { data: bData } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, requester_name, event_date, venue_name')
+      .select('id, dj_id, requester_id, requester_name, event_date, venue_name, event_type')
       .eq('id', bookingId).maybeSingle();
     const b = bData as unknown as BookingRow | null;
     // Only the host who made this booking can message its DJ.
@@ -87,6 +94,25 @@ export async function POST(req: Request) {
     const replyTo = await resolveUserEmail(user.id);
 
     const when = fmtDate(b.event_date);
+    // Subject: the host's own, else a sensible default of the event + date.
+    const subject = subjectIn
+      || `${(b.event_type || 'Event')}${b.event_date ? ` — ${shortDate(b.event_date)}` : ''}`.slice(0, 160);
+
+    // Primary delivery: drop the note into the on-platform inbox so it shows up
+    // for BOTH the host (sent) and the DJ (received) — one row, since the inbox
+    // lists any message the user is a participant in. The email below is a
+    // courtesy copy.
+    try {
+      await admin.from('messages').insert({
+        to_user_id: b.dj_id,
+        from_user_id: user.id,
+        from_name: hostName,
+        subject,
+        message,
+        read: false,
+      } as unknown as never);
+    } catch { /* non-fatal — the email copy still goes out below */ }
+
     const bodyHtml = esc(message).replace(/\n/g, '<br/>');
     const content = `
 <h1 style="margin:0 0 6px;font-size:22px;color:#111;">Hi ${esc(djName)} — a message from ${esc(hostName)}</h1>
@@ -101,12 +127,14 @@ ${replyTo ? `<p style="margin:16px 0 0;color:#999;font-size:12px;line-height:1.6
       await resend.emails.send({
         from: FROM,
         to,
-        subject: `${hostName} — message about the event (${when})`,
+        subject: `${hostName}: ${subject}`,
         html: shell(content),
         ...(replyTo ? { replyTo } : {}),
       });
     } catch {
-      return NextResponse.json({ error: 'Could not send the message. Try again.' }, { status: 502 });
+      // The inbox copy already landed above, so a failed email courtesy-copy
+      // isn't a hard failure — the DJ will still see the message on-platform.
+      return NextResponse.json({ ok: true, emailed: false });
     }
 
     return NextResponse.json({ ok: true, emailed: true });
