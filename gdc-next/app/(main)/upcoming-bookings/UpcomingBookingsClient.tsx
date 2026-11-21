@@ -98,6 +98,10 @@ interface Props {
   // upcoming bookings (not just this page's rows).
   initialSort?: 'date' | 'recent' | 'activity';
   activityTotal?: number;
+  // One ISO timestamp per upcoming booking that has host activity (across the
+  // FULL set, not just this page). The badge counts only the ones NEWER than
+  // the last time the DJ reviewed the New-activity view, so it clears when seen.
+  activityAts?: string[];
   // These are all computed over the FULL upcoming set server-side, because this
   // page's `bookings` is only one slice now. Used when serverPaged.
   upcomingTotal?: number;                       // count of all upcoming (non-activity)
@@ -122,7 +126,7 @@ export default function UpcomingBookingsClient({
   mobDepositPct: mobDepositPctProp, taxPct: taxPctProp,
   djZip = null, djCity = null, djState = null,
   serverPaged = false, serverPage = 0, serverTotal = 0, serverPageSize = 50,
-  initialSort = 'date', activityTotal,
+  initialSort = 'date', activityTotal, activityAts,
   upcomingTotal, serverStats, serverOverlapIds, serverLightBookings,
 }: Props) {
   const [bookings, setBookings] = useState<UpcomingBooking[]>(initialBookings);
@@ -277,6 +281,9 @@ export default function UpcomingBookingsClient({
   // Keep sortMode in step with the URL after a server-paged navigation.
   useEffect(() => { if (serverPaged) setSortMode(initialSort); }, [serverPaged, initialSort]);
   const changeSort = (mode: 'date' | 'recent' | 'activity') => {
+    // Opening the New-activity view IS reviewing it — clear the badge. Anything
+    // up to now counts as seen; newer host activity bumps it again.
+    if (mode === 'activity') markActivitySeen();
     if (serverPaged) {
       setSortMode(mode); // optimistic: flip the active button before the round-trip
       const params = new URLSearchParams(searchParams ? searchParams.toString() : '');
@@ -303,6 +310,25 @@ export default function UpcomingBookingsClient({
     if (typeof window !== 'undefined') {
       setOpenId(new URLSearchParams(window.location.search).get('open'));
     }
+  }, []);
+  // "New activity" badge: last time the DJ reviewed the New-activity view,
+  // persisted in localStorage. The badge counts activity newer than this, so it
+  // clears on review and only returns on genuinely newer host activity.
+  const ACTIVITY_SEEN_KEY = 'gdc_upcoming_activity_seen';
+  const [activitySeen, setActivitySeen] = useState<string | null>(null);
+  useEffect(() => {
+    try { setActivitySeen(localStorage.getItem(ACTIVITY_SEEN_KEY)); } catch { /* ignore */ }
+  }, []);
+  const markActivitySeen = () => {
+    const now = new Date().toISOString();
+    setActivitySeen(now);
+    try { localStorage.setItem(ACTIVITY_SEEN_KEY, now); } catch { /* ignore */ }
+  };
+  // Landing already in the New-activity view (a ?sort=activity load or refresh)
+  // also counts as reviewing it.
+  useEffect(() => {
+    if (initialSort === 'activity') markActivitySeen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const canBookings = canAcceptBookings(actingRole);
   const canContract = canSendContracts(actingRole);
@@ -419,6 +445,9 @@ export default function UpcomingBookingsClient({
   // stripped so re-sorting by date later isn't overridden on the next render.
   useEffect(() => {
     if (searchParams?.get('filter') !== 'activity') return;
+    // Arriving on the activity view (e.g. from the header bell's "View more")
+    // counts as reviewing it — clear the badge.
+    markActivitySeen();
     if (serverPaged) {
       // Server-paged: the activity view is a different server query, so navigate
       // ?sort=activity (dropping ?filter and ?page) rather than just flipping
@@ -485,11 +514,23 @@ export default function UpcomingBookingsClient({
       .filter((b) => b.event_date && b.last_activity_at)
       .sort((a, b) => Date.parse(b.last_activity_at || '') - Date.parse(a.last_activity_at || ''));
   }, [bookings]);
-  // The badge count. Server-paged (upcoming) sends the true total across ALL
-  // bookings via activityTotal, since this page's rows are only one slice;
-  // client-paged (none now, but kept safe) counts the loaded rows.
-  const loadedActivityCount = useMemo(() => bookings.filter((b) => !!b.last_activity_at).length, [bookings]);
-  const activityCount = serverPaged && typeof activityTotal === 'number' ? activityTotal : loadedActivityCount;
+  // The badge counts only the activity the DJ hasn't reviewed yet. We stamp a
+  // "last seen" time in localStorage when they open the New-activity view; the
+  // badge then counts activity NEWER than that — the same seen-key model the
+  // header bell uses, so the number clears when reviewed and reappears only on
+  // genuinely newer host activity. activityAts carries one timestamp per
+  // upcoming booking with activity across the FULL set (server-computed); we
+  // fall back to the loaded rows if it's absent.
+  const seenT = activitySeen ? Date.parse(activitySeen) : Number.NEGATIVE_INFINITY;
+  const activityCount = useMemo(() => {
+    if (Array.isArray(activityAts)) {
+      return activityAts.reduce((n, t) => (Date.parse(t) > seenT ? n + 1 : n), 0);
+    }
+    return bookings.reduce(
+      (n, b) => (b.last_activity_at && Date.parse(b.last_activity_at) > seenT ? n + 1 : n),
+      0,
+    );
+  }, [activityAts, bookings, seenT]);
 
   // ── Pagination ──────────────────────────────────────────────────────────
   // Each booking row is a heavy component (pipeline, payments, effects), so
@@ -812,14 +853,18 @@ export default function UpcomingBookingsClient({
       {!archive && (
         <div className={styles.statBoxes}>
           {([
-            ['Total Upcoming Bookings', dashStats.upcoming],
+            // "Upcoming" is every booking dated today or later — there's no day
+            // window, so the muted note says so rather than naming a number of
+            // days.
+            ['Total Upcoming Bookings', dashStats.upcoming, 'Today onward'],
             ['Total Booked — Last 30 Days', dashStats.booked30],
             ['Pending Payment Requests', dashStats.pendingPayments],
             ['Pending Contracts', dashStats.pendingContracts],
-          ] as [string, number][]).map(([label, value]) => (
+          ] as [string, number, string?][]).map(([label, value, note]) => (
             <div key={label} className={styles.statBox}>
               <div className={styles.statBoxNum}>{value}</div>
               <div className={styles.statBoxLabel}>{label}</div>
+              {note && <div className={styles.statBoxNote}>{note}</div>}
             </div>
           ))}
         </div>
