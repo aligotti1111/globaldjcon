@@ -893,6 +893,7 @@ export function EventRow({
         <MessageDjModal
           bookingId={event.id}
           djName={event.dj_name || 'your DJ'}
+          defaultSubject={`${eventTypeLabel || 'Event'}${event.event_date ? ` — ${formatLongDate(event.event_date)}` : ''}`}
           onClose={() => setShowMsgModal(false)}
         />
       )}
@@ -984,12 +985,14 @@ export function CancelRequestModal({
 // Sends a note to the DJ through Global DJ Connect (emailed, reply-to host).
 
 export function MessageDjModal({
-  bookingId, djName, onClose,
+  bookingId, djName, defaultSubject = '', onClose,
 }: {
   bookingId: string;
   djName: string;
+  defaultSubject?: string;
   onClose: () => void;
 }) {
+  const [subject, setSubject] = useState(defaultSubject);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1004,7 +1007,7 @@ export function MessageDjModal({
       const res = await fetch('/api/host/message-dj', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId, message: trimmed }),
+        body: JSON.stringify({ bookingId, message: trimmed, subject: subject.trim() }),
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(json.error || 'Could not send the message.');
@@ -1037,6 +1040,17 @@ export function MessageDjModal({
           <>
             <div className={styles.modalBody}>
               <label className={styles.field}>
+                <span className={styles.fieldLabel}>Subject</span>
+                <input
+                  type="text"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="Subject"
+                  className={styles.input}
+                  maxLength={160}
+                />
+              </label>
+              <label className={styles.field} style={{ marginTop: 10 }}>
                 <span className={styles.fieldLabel}>Your message</span>
                 <textarea
                   value={message}
