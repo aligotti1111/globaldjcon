@@ -225,7 +225,10 @@ export default function CheckSent(props: Props) {
             <>
               <Hero />
               {depositLeadNote}
-              {mustPrior && opts.length > 0 && (
+              {/* The standard "received by …" banner. Hidden once we're already
+                  inside the required window, where the stronger red note below
+                  replaces it (showing both reads as contradictory). */}
+              {mustPrior && opts.length > 0 && !withinRequiredWindow && (
                 <div style={{ background: 'rgba(245,180,74,.1)', border: '1px solid rgba(245,180,74,.4)', borderRadius: 10, padding: 12, margin: '0 0 16px', textAlign: 'left' }}>
                   <p style={{ margin: 0, color: '#f0b64a', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>{dj} needs your check received {weeksPhrase || 'before the event'}{checkDeadline ? ` (by ${checkDeadline})` : ''} — not the day of the event.</p>
                 </div>
