@@ -46,7 +46,12 @@ function shell(content: string): string {
 interface BookingRow {
   id: string; dj_id: string | null; requester_id: string | null;
   host_email: string | null; requester_name: string | null;
-  event_date: string | null; venue_name: string | null;
+  event_date: string | null; venue_name: string | null; event_type: string | null;
+}
+
+function shortDate(d: string | null): string {
+  if (!d) return '';
+  return new Date(`${d}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export async function POST(req: Request) {
@@ -59,6 +64,8 @@ export async function POST(req: Request) {
     try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid body' }, { status: 400 }); }
     const bookingId = typeof body.bookingId === 'string' ? body.bookingId : '';
     const message = typeof body.message === 'string' ? body.message.trim() : '';
+    const subjectIn = typeof (body as { subject?: unknown }).subject === 'string'
+      ? ((body as { subject?: string }).subject || '').trim().slice(0, 160) : '';
     if (!bookingId) return NextResponse.json({ error: 'Missing booking.' }, { status: 400 });
     if (!message) return NextResponse.json({ error: 'Type a message first.' }, { status: 400 });
     if (message.length > 4000) return NextResponse.json({ error: 'Message is too long.' }, { status: 400 });
@@ -71,7 +78,7 @@ export async function POST(req: Request) {
     const admin = createAdminClient() as unknown as SupabaseClient;
     const { data: bData } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, host_email, requester_name, event_date, venue_name')
+      .select('id, dj_id, requester_id, host_email, requester_name, event_date, venue_name, event_type')
       .eq('id', bookingId).maybeSingle();
     const b = bData as unknown as BookingRow | null;
     if (!b || b.dj_id !== acting.djId) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
@@ -90,6 +97,25 @@ export async function POST(req: Request) {
     const hostFull = b.requester_name?.trim() || (b.requester_id ? await resolveUserName(b.requester_id) : null) || '';
     const hi = esc(hostFull.split(' ')[0] || 'there');
     const when = fmtDate(b.event_date);
+    const subject = subjectIn
+      || `${(b.event_type || 'Event')}${b.event_date ? ` — ${shortDate(b.event_date)}` : ''}`.slice(0, 160);
+
+    // On-platform inbox copy — only when the host has an account to receive it
+    // (manual bookings with just an email can't; those still get the email).
+    // One row covers both inboxes (DJ sent / host received).
+    if (b.requester_id) {
+      try {
+        await admin.from('messages').insert({
+          to_user_id: b.requester_id,
+          from_user_id: acting.djId,
+          from_name: djName,
+          subject,
+          message,
+          read: false,
+        } as unknown as never);
+      } catch { /* non-fatal — the email copy still goes out below */ }
+    }
+
     const bodyHtml = esc(message).replace(/\n/g, '<br/>');
     const content = `
 <h1 style="margin:0 0 6px;font-size:22px;color:#111;">Hi ${hi} — a message from ${esc(djName)}</h1>
@@ -104,11 +130,15 @@ ${replyTo ? `<p style="margin:16px 0 0;color:#999;font-size:12px;line-height:1.6
       await resend.emails.send({
         from: FROM,
         to,
-        subject: `${djName} — message about your event (${when})`,
+        subject: `${djName}: ${subject}`,
         html: shell(content),
         ...(replyTo ? { replyTo } : {}),
       });
     } catch {
+      // When the host has an account, the inbox copy already landed above, so a
+      // failed email isn't a hard failure. Only a manual (email-only) booking
+      // with no inbox copy truly fails if the email can't send.
+      if (b.requester_id) return NextResponse.json({ ok: true, emailed: false });
       return NextResponse.json({ error: 'Could not send the message. Try again.' }, { status: 502 });
     }
 
