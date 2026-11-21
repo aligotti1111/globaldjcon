@@ -530,11 +530,11 @@ export default function MobileBookingCard(props: Props) {
                 CODE") vs the DJ's account-wide sale (no code — its name is kept
                 in discount_label, shown as "Site Promotion: NAME"). */}
             {bt.discount_amount != null && Number(bt.discount_amount) > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '1px 0 0', fontSize: 12.5, color: 'var(--neon)' }}>
-                <span>{(bt.discount_code || '').trim()
+              <div style={{ textAlign: 'center', padding: '4px 0 0', fontSize: 12.5, fontWeight: 600, color: 'var(--neon)' }}>
+                {(bt.discount_code || '').trim()
                   ? `Promo Code: ${bt.discount_label || (bt.discount_code || '').trim()}`
-                  : ((bt.discount_label || '').trim() ? `Site Promotion: ${(bt.discount_label || '').trim()}` : 'Site-wide Promotion')}</span>
-                <span>−{money2(Number(bt.discount_amount))}</span>
+                  : ((bt.discount_label || '').trim() ? `Site Promotion: ${(bt.discount_label || '').trim()}` : 'Site-wide Promotion')}
+                {' · You saved '}{money2(Number(bt.discount_amount))}
               </div>
             )}
             {depAmt > 0 && (
