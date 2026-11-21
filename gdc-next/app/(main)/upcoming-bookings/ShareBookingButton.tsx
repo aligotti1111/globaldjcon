@@ -160,6 +160,14 @@ export default function ShareBookingButton({
     document.body.appendChild(a); a.click(); a.remove();
   }
 
+  function printCard() {
+    // Open the public card in its own tab; ?print=1 fires the browser's print
+    // dialog once it has rendered.
+    const a = document.createElement('a');
+    a.href = `${cardUrl}?print=1`; a.target = '_blank'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
   function shareByText() {
     const num = phone ? String(phone).replace(/[^\d+]/g, '') : '';
     // The text leads with WHICH event — type + date — before the link(s), so
@@ -274,6 +282,11 @@ export default function ShareBookingButton({
               onClick={() => { downloadCard(); setOpen(false); }}
               label="Download"
               icon={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></>}
+            />
+            <MenuRow
+              onClick={() => { printCard(); setOpen(false); }}
+              label="Print"
+              icon={<><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></>}
             />
           </div>
         </>,
