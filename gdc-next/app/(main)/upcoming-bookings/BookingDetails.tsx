@@ -921,16 +921,22 @@ export default function BookingDetails({
             <span className={styles.priceVal}>&mdash;</span>
           </div>
         )}
-        {/* Percent-off / promo discount — its own line UNDER "Total (with tax)". */}
-        {bkDiscountAmt > 0 && (
-          <div className={styles.priceRow} style={{ borderTop: 'none', paddingTop: 2 }}>
-            <span className={styles.priceKey} />
-            <span className={styles.priceVal} style={{ color: 'var(--neon)', fontSize: '.78rem', fontWeight: 500 }}>
-              {booking.discount_label || 'Discount'} — saved {money(bkDiscountAmt)}
+        {/* Saving line UNDER "Total (with tax)" — a single CENTERED line (not an
+            itemized row) that says WHY there's a saving: a promo code the host
+            entered vs the DJ's account-wide sale. */}
+        {bkDiscountAmt > 0 && (() => {
+          const code = ((booking as { discount_code?: string | null }).discount_code || '').trim();
+          const label = (booking.discount_label || '').trim();
+          const why = code
+            ? `Promo Code: ${label || code}`
+            : (label ? `Site Promotion: ${label}` : 'Site-wide Promotion');
+          return (
+            <div style={{ textAlign: 'center', padding: '4px 0 0', fontSize: '.8rem', fontWeight: 600, color: 'var(--neon)' }}>
+              {why} · You saved {money(bkDiscountAmt)}
               {booking.original_rate != null ? ` (was ${money(booking.original_rate)})` : ''}
-            </span>
-          </div>
-        )}
+            </div>
+          );
+        })()}
         {sched.length > 0 && (
           <div className={styles.paySched}>
             <div className={styles.schedLbl}>Payment schedule</div>
