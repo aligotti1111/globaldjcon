@@ -287,9 +287,16 @@ export function EventRow({
     // Sale / promo-code saving, tucked under the Total (not itemized above it).
     const discAmt = raw.discount_amount != null ? Number(raw.discount_amount) : 0;
     if (discAmt > 0) {
+      // Say WHY there's a saving: a promo code the host entered (discount_code is
+      // only set for codes) vs a site-wide promotion (no code, but the sale's name
+      // is kept in discount_label). Falls back to a generic label if neither is set.
       const code = (raw.discount_code || '').trim();
+      const label = (raw.discount_label || '').trim();
+      const savingLabel = code
+        ? `Promo Code: ${label || code}`
+        : (label ? `Site Promotion: ${label}` : 'Site-wide Promotion');
       rows.push({
-        label: code ? `Promo Code: ${raw.discount_label || code}` : 'Total savings',
+        label: savingLabel,
         value: `−${money(discAmt)}`,
         saving: true,
       });
@@ -560,7 +567,7 @@ export function EventRow({
               </div>
               {timeRange && (
                 <div style={{ marginTop: 24 }}>
-                  <div className={dj.detailLabel} style={{ marginBottom: 6, fontSize: 12 }}>{event.booking_type === 'club' ? 'Set Time' : 'Event Time'}</div>
+                  <div className={dj.detailLabel} style={{ marginBottom: 6, fontSize: 12 }}>{event.booking_type === 'club' ? 'Set Time' : (event.event_type === 'weddings' ? 'Reception Time' : 'Event Time')}</div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#00e3ad' }}>{timeRange}</div>
                 </div>
               )}
