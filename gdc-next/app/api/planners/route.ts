@@ -38,6 +38,7 @@ import {
   type PlannerField,
   type PlannerFieldType,
 } from '@/lib/planner';
+import { parseCustomEventTypes } from '@/lib/constants';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -299,6 +300,17 @@ export async function GET(req: Request) {
 
     const templates = await loadTemplates(db, userId);
     const hidden = await loadHiddenKeys(db, userId);
+    // The DJ's custom (self-defined) event types, so the modal can show a real
+    // label for a booking whose event type is a custom key (e.g. "Foam Party")
+    // instead of falling back to "—".
+    const { data: djRow } = await admin
+      .from('users')
+      .select('mob_custom_event_types')
+      .eq('id', userId)
+      .maybeSingle();
+    const customEventTypes = parseCustomEventTypes(
+      (djRow as { mob_custom_event_types?: unknown } | null)?.mob_custom_event_types
+    );
 
     // Which planner to compose? Normally the booking's own event type. But the
     // editor can ask for a SPECIFIC one via ?eventType= — that's how "customise"
@@ -391,6 +403,7 @@ export async function GET(req: Request) {
         hasAccount: !!b.requester_id,
       },
       eventType: b.event_type,
+      customEventTypes,
       bookingType: b.booking_type,
       // The booking, in one line: date · venue · who. The DJ is confirming they
       // picked the right ROW as much as the right planner — "am I about to mail
