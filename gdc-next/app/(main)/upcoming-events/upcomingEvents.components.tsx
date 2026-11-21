@@ -742,13 +742,22 @@ export function EventRow({
                     {showCaption && (
                       <div style={{ marginTop: 14, marginBottom: 3, fontFamily: "'Space Mono', ui-monospace, monospace", fontSize: '.55rem', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--neon, #00e0a4)', opacity: .85 }}>Add-ons</div>
                     )}
-                    <div
-                      className={`${dj.priceRow}${r.total ? ' ' + dj.priceRowTotal : ''}`}
-                      style={r.saving ? { paddingTop: 1, fontSize: '.8rem' } : (isTaxRow && anyAddon ? { marginTop: 14 } : undefined)}
-                    >
-                      <span className={dj.priceKey} style={r.saving ? { color: 'var(--neon,#00e0a4)' } : undefined}>{r.label}</span>
-                      <span className={dj.priceVal} style={r.saving ? { color: 'var(--neon,#00e0a4)' } : undefined}>{r.value}</span>
-                    </div>
+                    {r.saving ? (
+                      /* The saving isn't a charge — show it as ONE centered line
+                         ("… · You saved $88.00") so it reads as money off, not an
+                         itemized row like the charges above. */
+                      <div style={{ textAlign: 'center', padding: '4px 0 0', fontSize: '.82rem', fontWeight: 600, color: 'var(--neon,#00e0a4)' }}>
+                        {r.label} · You saved {r.value.replace(/^−/, '')}
+                      </div>
+                    ) : (
+                      <div
+                        className={`${dj.priceRow}${r.total ? ' ' + dj.priceRowTotal : ''}`}
+                        style={isTaxRow && anyAddon ? { marginTop: 14 } : undefined}
+                      >
+                        <span className={dj.priceKey}>{r.label}</span>
+                        <span className={dj.priceVal}>{r.value}</span>
+                      </div>
+                    )}
                   </Fragment>
                   );
                 })}
