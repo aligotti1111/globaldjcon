@@ -225,6 +225,15 @@
   color: rgba(10, 10, 16, .75);
 }
 
+/* A small muted clarifier under a stat label (e.g. what "upcoming" counts). */
+.statBoxNote {
+  margin-top: .15rem;
+  font-size: .58rem;
+  font-weight: 500;
+  letter-spacing: .02em;
+  color: rgba(10, 10, 16, .5);
+}
+
 .sortBar {
   display: flex;
   align-items: center;
