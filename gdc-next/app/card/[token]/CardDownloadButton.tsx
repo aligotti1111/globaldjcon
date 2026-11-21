@@ -53,10 +53,20 @@ export default function CardDownloadButton({ targetId, fileName, autoOnly = fals
   useEffect(() => {
     if (autoRan.current) return;
     if (typeof window === 'undefined') return;
-    if (new URLSearchParams(window.location.search).get('download') !== '1') return;
-    autoRan.current = true;
-    const t = setTimeout(() => { download(); }, 400);
-    return () => clearTimeout(t);
+    const qs = new URLSearchParams(window.location.search);
+    // ?download=1 → html2canvas capture. ?print=1 → the browser print dialog
+    // (both opened by the DJ's share sheet). A short delay lets fonts/images
+    // settle so the print preview isn't half-rendered.
+    if (qs.get('download') === '1') {
+      autoRan.current = true;
+      const t = setTimeout(() => { download(); }, 400);
+      return () => clearTimeout(t);
+    }
+    if (qs.get('print') === '1') {
+      autoRan.current = true;
+      const t = setTimeout(() => { try { window.print(); } catch { /* ignore */ } }, 500);
+      return () => clearTimeout(t);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
