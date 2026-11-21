@@ -163,6 +163,23 @@ export default function CheckSent(props: Props) {
     const weeksPhrase = checkLeadWeeks ? `at least ${checkLeadWeeks} week${checkLeadWeeks === 1 ? '' : 's'} before the event` : '';
     const bannerDeadline = checkDeadline || weeksPhrase || 'before the event';
 
+    // Are we already INSIDE the DJ's required "received by" window? If the DJ
+    // needs the check N weeks before the event, the cutoff is (event date − N
+    // weeks). Once today is on/after that cutoff, a mailed check may not arrive
+    // in time — so we warn the host to confirm with the DJ before relying on
+    // paying by check. (Only when a lead time is set and a prior hand-off is
+    // required.)
+    const withinRequiredWindow = (() => {
+      if (!mustPrior || !checkLeadWeeks || !eventDate) return false;
+      const ev = new Date(`${eventDate}T12:00:00`).getTime();
+      if (Number.isNaN(ev)) return false;
+      const cutoff = ev - checkLeadWeeks * 7 * 86400000;
+      return Date.now() >= cutoff;
+    })();
+    const contactPhrase = checkPhone
+      ? `${checkContactVerb} ${checkPhone}`
+      : 'reach out';
+
     // The check hand-offs the DJ turned on — shown as distinct options, exactly
     // mirroring the DJ's check tile (Mail It / Exchange In Person / Drop Off At
     // Office), plus day-of when allowed.
@@ -213,6 +230,16 @@ export default function CheckSent(props: Props) {
                   <p style={{ margin: 0, color: '#f0b64a', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>{dj} needs your check received {weeksPhrase || 'before the event'}{checkDeadline ? ` (by ${checkDeadline})` : ''} — not the day of the event.</p>
                 </div>
               )}
+              {/* It's already inside the DJ's required received-by window, so a
+                  mailed check may not land in time. Tell the host to confirm with
+                  the DJ before relying on paying by check. */}
+              {withinRequiredWindow && (
+                <div style={{ background: 'rgba(255,107,107,.1)', border: '1px solid rgba(255,107,107,.45)', borderRadius: 10, padding: 12, margin: '0 0 16px', textAlign: 'left' }}>
+                  <p style={{ margin: 0, color: '#ff9b9b', fontSize: 13.5, lineHeight: 1.5, fontWeight: 600 }}>
+                    This is within the time frame {dj} requires the check to be received before the event. Connect with {dj} ({contactPhrase}) to be assured you can still pay by check.
+                  </p>
+                </div>
+              )}
               {opts.length === 0 ? (
                 <p style={{ color: '#b7b7c6', fontSize: 13.5, lineHeight: 1.6, margin: '0 0 8px' }}>Reach out to {dj} to arrange getting your check to them.</p>
               ) : (
@@ -223,7 +250,7 @@ export default function CheckSent(props: Props) {
                   ))}
                   {selected === 'meet' && (
                     <div style={{ marginTop: 14 }}>
-                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>The contact information below to arrange the exchange will be emailed to you once you click confirm.</p>
+                      <p style={{ color: '#b7b7c6', fontSize: 13, lineHeight: 1.6, margin: '0 0 10px', textAlign: 'left' }}>Please use the contact information below to arrange the exchange. The information below will be emailed to you once you click confirm.</p>
                       <div style={{ textAlign: 'left', background: '#0f0f15', border: '1px solid rgba(255,255,255,.1)', borderRadius: 10, padding: 14 }}>
                         {checkPhone
                           ? <p style={{ margin: 0, color: '#d5d5df', fontSize: 13.5, lineHeight: 1.5 }}>{checkContactVerb.charAt(0).toUpperCase() + checkContactVerb.slice(1)} <strong style={{ color: '#fff', whiteSpace: 'nowrap' }}>{checkPhone}</strong> to arrange handing your check to {dj} in person.</p>
