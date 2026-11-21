@@ -26,7 +26,7 @@
 // stays put behind them and the opened tab can close itself when done.
 
 import { useEffect, useState, type CSSProperties } from 'react';
-import { MOB_EVENT_LABELS } from '@/lib/constants';
+import { mobEventLabel } from '@/lib/constants';
 import styles from './plannerSend.module.css';
 
 interface TemplateLite {
@@ -44,6 +44,7 @@ interface Loaded {
   prefillCount: number;
   recipient: { name: string | null; email: string | null; hasAccount: boolean };
   eventType: string | null;
+  customEventTypes?: { key: string; label: string }[];
   event: { date: string | null; venue: string | null };
   templates: TemplateLite[];
 }
@@ -361,7 +362,7 @@ export default function PlannerSendModal({
               </span>
               <span style={{ ...infoItemStyle, flexShrink: 0 }}>
                 <span style={infoLabelStyle}>Event</span>
-                <span style={infoValStyle}>{data.eventType ? (MOB_EVENT_LABELS[data.eventType] || '—') : '—'}</span>
+                <span style={infoValStyle}>{data.eventType ? mobEventLabel(data.eventType, data.customEventTypes || []) : '—'}</span>
               </span>
               {data.event.venue && (
                 <span style={{ ...infoItemStyle, flexShrink: 1 }}>
