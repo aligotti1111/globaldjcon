@@ -28,6 +28,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { optimizedImageUrl } from '@/lib/img';
 
 // ─── Types ────────────────────────────────────────────────────────
 export interface HomeDj {
@@ -40,6 +41,7 @@ export interface HomeDj {
   country: string | null;
   zip: string | null;
   avatar_url: string | null;
+  banner_url: string | null;
   rate: string | null;
   travel_distance: string | null;
   booking_settings: string | null;
@@ -670,6 +672,7 @@ function DjCard({ dj, index }: { dj: HomeDj; index: number }) {
   const typeClass = dj.dj_type || 'mobile';
   const slug = dj.slug || '';
   const location = [dj.city, dj.state].filter(Boolean).join(', ');
+  const bannerUrl = dj.banner_url ? optimizedImageUrl(dj.banner_url, 640, 70) : null;
 
   return (
     <Link
@@ -681,10 +684,41 @@ function DjCard({ dj, index }: { dj: HomeDj; index: number }) {
         textDecoration: 'none',
         color: 'inherit',
         display: 'block',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      <div className="card-glow" />
-      <div className="card-top">
+      {bannerUrl && (
+        <>
+          {/* DJ's banner as a soft card background. A dark gradient overlay keeps
+              the avatar, name and location readable on top of any image. */}
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundImage: `url("${bannerUrl}")`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              opacity: 0.4,
+              zIndex: 0,
+              pointerEvents: 'none',
+            }}
+          />
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(180deg, rgba(10,10,18,0.55) 0%, rgba(10,10,18,0.82) 100%)',
+              zIndex: 0,
+              pointerEvents: 'none',
+            }}
+          />
+        </>
+      )}
+      <div className="card-glow" style={{ position: 'relative', zIndex: 1 }} />
+      <div className="card-top" style={{ position: 'relative', zIndex: 1 }}>
         <div className="avatar" style={{ background: avatarGradient(dj.dj_type) }}>
           {dj.avatar_url ? (
             // next/image auto-resizes the source PNG/JPG down to ~88px and
@@ -708,9 +742,9 @@ function DjCard({ dj, index }: { dj: HomeDj; index: number }) {
           </div>
         )}
       </div>
-      <div className="dj-name">{dj.name || 'Unknown DJ'}</div>
+      <div className="dj-name" style={{ position: 'relative', zIndex: 1 }}>{dj.name || 'Unknown DJ'}</div>
       {location && (
-        <div className="dj-city">
+        <div className="dj-city" style={{ position: 'relative', zIndex: 1 }}>
           📍 {location}
           {dj._distance != null && dj._distance < 9999 && (
             <span style={{ color: 'var(--neon)', fontWeight: 500 }}>
@@ -719,7 +753,7 @@ function DjCard({ dj, index }: { dj: HomeDj; index: number }) {
           )}
         </div>
       )}
-      <div className="card-footer">{dj.rate && <div className="rate">{dj.rate}</div>}</div>
+      <div className="card-footer" style={{ position: 'relative', zIndex: 1 }}>{dj.rate && <div className="rate">{dj.rate}</div>}</div>
     </Link>
   );
 }
