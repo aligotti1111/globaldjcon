@@ -717,7 +717,7 @@ function DjCard({ dj, index }: { dj: HomeDj; index: number }) {
           />
         </>
       )}
-      <div className="card-glow" style={{ position: 'relative', zIndex: 1 }} />
+      <div className="card-glow" />
       <div className="card-top" style={{ position: 'relative', zIndex: 1 }}>
         <div className="avatar" style={{ background: avatarGradient(dj.dj_type) }}>
           {dj.avatar_url ? (
