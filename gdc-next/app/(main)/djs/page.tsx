@@ -21,7 +21,7 @@ export default async function DjsDirectoryPage() {
       id, name, slug, dj_type,
       city, state, country, zip,
       home_lat, home_lon,
-      avatar_url, rate, travel_distance,
+      avatar_url, banner_url, rate, travel_distance,
       booking_settings, profile_private
     `)
     .eq('role', 'dj')
