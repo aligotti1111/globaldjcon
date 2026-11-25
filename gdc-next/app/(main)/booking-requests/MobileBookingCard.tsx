@@ -517,7 +517,7 @@ export default function MobileBookingCard(props: Props) {
                         {(bq.discount_code || '').trim()
                           ? `Promo Code: ${bq.discount_label || (bq.discount_code || '').trim()}`
                           : ((bq.discount_label || '').trim() ? `Site Promotion: ${(bq.discount_label || '').trim()}` : 'Site-wide Promotion')}
-                        {' · You saved '}{money2(qDiscount)}
+                        {' · Host saved '}{money2(qDiscount)}
                       </div>
                     )}
                     <div style={{ borderTop: '1px solid rgba(255,255,255,0.18)', margin: '.5rem 0' }} />
@@ -609,7 +609,7 @@ export default function MobileBookingCard(props: Props) {
                 {(bt.discount_code || '').trim()
                   ? `Promo Code: ${bt.discount_label || (bt.discount_code || '').trim()}`
                   : ((bt.discount_label || '').trim() ? `Site Promotion: ${(bt.discount_label || '').trim()}` : 'Site-wide Promotion')}
-                {' · You saved '}{money2(Number(bt.discount_amount))}
+                {' · Host saved '}{money2(Number(bt.discount_amount))}
               </div>
             )}
             {depAmt > 0 && (
