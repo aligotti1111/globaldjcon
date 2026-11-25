@@ -704,6 +704,8 @@ export default function MobileBookingForm({
       (errorFieldId === 'mpf-venue-name' && venueName.trim()) ||
       (errorFieldId === 'mpf-venue-address' && venueAddress.trim()) ||
       (errorFieldId === 'mpf-start-time' && startTime) ||
+      (errorFieldId === 'mpf-cocktail-needed' && cocktailNeeded != null) ||
+      (errorFieldId === 'mpf-ceremony-needed' && ceremonyNeeded != null) ||
       (errorFieldId === 'mpf-cocktail-start' && !!cocktailStart && !cocktailWarn) ||
       (errorFieldId === 'mpf-cocktail-room' && cocktailSameRoom != null) ||
       (errorFieldId === 'mpf-ceremony-start' && !!ceremonyStart) ||
@@ -718,7 +720,7 @@ export default function MobileBookingForm({
       setErrorFieldId(null);
       setErrorMsg(null);
     }
-  }, [errorFieldId, phone, fullNameValid, eventType, venueName, venueAddress, startTime, cocktailStart, cocktailSameRoom, cocktailWarn, ceremonyStart, ceremonySameRoom, emailValid, contactEmail, rejectedEmail]);
+  }, [errorFieldId, phone, fullNameValid, eventType, venueName, venueAddress, startTime, cocktailNeeded, ceremonyNeeded, cocktailStart, cocktailSameRoom, cocktailWarn, ceremonyStart, ceremonySameRoom, emailValid, contactEmail, rejectedEmail]);
 
   // ── Phone formatting on input ────────────────────────────────────
   function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1688,11 +1690,11 @@ export default function MobileBookingForm({
         {/* Cocktail-hour subsection — WEDDINGS ONLY. General/Mitzvah and other
             mobile events no longer offer a cocktail-hour add-on. */}
         {cocktailEligible && isWedding && (
-          <div className={styles.weddingFields} id="mpf-cocktail-needed">
+          <div className={styles.weddingFields} id="mpf-cocktail-needed" style={{ scrollMarginTop: '90px' }}>
             <div className={styles.cocktailHeaderRow}>
-              <div className={styles.weddingHeader}>Cocktail Hour</div>
+              <div className={styles.weddingHeader} style={errorFieldId === 'mpf-cocktail-needed' ? { color: 'var(--danger, #ff5f5f)' } : undefined}>Cocktail Hour</div>
             </div>
-            <div className={styles.weddingPrompt}>Is music needed for cocktail hour?</div>
+            <div className={styles.weddingPrompt} style={errorFieldId === 'mpf-cocktail-needed' ? { color: 'var(--danger, #ff5f5f)' } : undefined}>Is music needed for cocktail hour?</div>
             <div className={styles.radioGroup}>
               <label className={styles.radioPill}>
                 <input
@@ -1783,11 +1785,11 @@ export default function MobileBookingForm({
         {/* Music-for-ceremony subsection — WEDDINGS ONLY. Independent add-on
             that mirrors the cocktail-hour block above. */}
         {isWedding && (
-          <div className={styles.weddingFields} id="mpf-ceremony-needed">
+          <div className={styles.weddingFields} id="mpf-ceremony-needed" style={{ scrollMarginTop: '90px' }}>
             <div className={styles.cocktailHeaderRow}>
-              <div className={styles.weddingHeader}>Music For Ceremony</div>
+              <div className={styles.weddingHeader} style={errorFieldId === 'mpf-ceremony-needed' ? { color: 'var(--danger, #ff5f5f)' } : undefined}>Music For Ceremony</div>
             </div>
-            <div className={styles.weddingPrompt}>Is music needed for the ceremony?</div>
+            <div className={styles.weddingPrompt} style={errorFieldId === 'mpf-ceremony-needed' ? { color: 'var(--danger, #ff5f5f)' } : undefined}>Is music needed for the ceremony?</div>
             <div className={styles.radioGroup}>
               <label className={styles.radioPill}>
                 <input
