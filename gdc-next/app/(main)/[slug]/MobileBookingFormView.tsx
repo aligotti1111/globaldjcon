@@ -597,6 +597,13 @@ export default function MobileBookingForm({
     if (basePrice == null) return { amount: 0, kind: null, label: '' };
     return computeDiscount(basePrice, bookingSettings, appliedCode, dateKey);
   }, [basePrice, bookingSettings, appliedCode, dateKey]);
+  // When the package is a QUOTE (no computable price) but the host chose priced
+  // add-ons, any promo code / site sale applies to those add-ons. The package
+  // stays "price on request"; only the add-on side is priced + discounted.
+  const addonDiscount: DiscountResult = useMemo(() => {
+    if (addonsTotal <= 0) return { amount: 0, kind: null, label: '' };
+    return computeDiscount(addonsTotal, bookingSettings, appliedCode, dateKey);
+  }, [addonsTotal, bookingSettings, appliedCode, dateKey]);
   const discountedTotal = basePrice != null ? Math.max(0, basePrice - discount.amount) : null;
   // Sales tax first (post-discount price), then the tax-inclusive total.
   // The DJ's chosen currency symbol — shown on every price the booker sees,
@@ -2025,6 +2032,33 @@ export default function MobileBookingForm({
                 The DJ will send back a quote once they review the details of your event and the package you have selected.
               </div>
             )}
+
+            {/* Quote package + priced add-ons: the add-ons ARE priced now, and
+                any promo code / site sale applies to them. Show the host their
+                discounted add-on subtotal (the package price still comes from
+                the DJ's quote). */}
+            {(priceResult.isQuote || priceResult.price == null) && addonsTotal > 0 && (() => {
+              const money2 = (n: number) => `${cur}${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+              const net = Math.max(0, addonsTotal - addonDiscount.amount);
+              return (
+                <div style={{ maxWidth: 300, margin: '12px auto 0', textAlign: 'left', borderTop: '1px solid var(--border,rgba(255,255,255,.18))', paddingTop: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
+                    <span>Add-ons subtotal</span><span>{money2(addonsTotal)}</span>
+                  </div>
+                  {addonDiscount.amount > 0 && (
+                    <div style={{ textAlign: 'center', padding: '2px 0', fontSize: '.78rem', fontWeight: 600, color: 'var(--neon,#00e0a4)' }}>
+                      {addonDiscount.label} · You save {money2(addonDiscount.amount)}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1rem', fontWeight: 800, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 8, marginTop: 6 }}>
+                    <span>Add-ons total{addonDiscount.amount > 0 ? ' (after discount)' : ''}</span><span>{money2(net)}</span>
+                  </div>
+                  <div style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)', marginTop: 6, lineHeight: 1.5 }}>
+                    The DJ will add the package price to this when they send your quote.
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Itemized breakdown — package first, each add-on on its own line,
                 tax (when it applies), then the big Total. */}
