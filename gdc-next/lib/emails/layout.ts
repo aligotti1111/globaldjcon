@@ -351,8 +351,10 @@ export function billBreakdownBox(
   }
   if (taxAmt > 0) rows.push(row(`Sales tax${taxPct > 0 ? ` (${taxPct}%)` : ''}`, money(taxAmt)));
   rows.push(row(taxAmt > 0 ? 'Total Event Cost (with tax)' : 'Total Event Cost', money(total), { bold: true, top: true }));
-  // Sale / promo-code saving, shown directly under the Total Event Cost.
-  if (discAmt > 0) rows.push(row('Total saving', `−${money(discAmt)}`, { muted: true }));
+  // Sale / promo-code saving — centered, directly under the Total Event Cost.
+  if (discAmt > 0) rows.push(
+    `<tr><td colspan="2" style="padding:8px 0 2px;text-align:center;color:#0a7d5a;font-size:13px;font-weight:700;">Total saving · −${money(discAmt)}</td></tr>`,
+  );
   // Payment schedule lives in its own table under a "Payment Schedule" heading
   // (matching the manual-booking email) rather than as more rows under Total.
   const scheduleRows: string[] = [];
