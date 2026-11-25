@@ -447,6 +447,17 @@ export default function MobileBookingCard(props: Props) {
             // Chosen add-ons, itemized at the bottom of the package block.
             const reqAddons = parseBookingAddons((b as { addons?: unknown }).addons);
             if (reqAddons.length === 0) return null;
+            // For a QUOTE package the host still chose priced add-ons, and any
+            // promo code / site sale was applied to those add-ons — so show the
+            // DJ the add-on prices, the saving, and the discounted add-on
+            // subtotal (the package itself is still "price on request"). For a
+            // PRICED booking the full Cost Breakdown below already itemizes the
+            // add-ons, so here we keep it to titles only.
+            const bq = b as typeof b & { discount_amount?: number | null; discount_label?: string | null; discount_code?: string | null };
+            const money2 = (n: number) => `${cur}${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const addonSum = reqAddons.reduce((s, a) => s + (Number(a.price) || 0), 0);
+            const qDiscount = (isQuote && bq.discount_amount != null && Number(bq.discount_amount) > 0) ? Number(bq.discount_amount) : 0;
+            const showQuotePricing = isQuote && addonSum > 0;
             return (
               <div style={{ marginTop: '.9rem' }}>
                 <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 .7rem' }} />
@@ -454,11 +465,34 @@ export default function MobileBookingCard(props: Props) {
                 {reqAddons.map((a, i) => (
                   <div
                     key={i}
-                    style={{ fontSize: 14, color: 'var(--white)', padding: '3px 0' }}
+                    style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 14, color: 'var(--white)', padding: '3px 0' }}
                   >
-                    {a.title}
+                    <span>{a.title}</span>
+                    {showQuotePricing && <span>{money2(Number(a.price) || 0)}</span>}
                   </div>
                 ))}
+                {showQuotePricing && (
+                  <>
+                    {qDiscount > 0 && (
+                      <div style={{ textAlign: 'center', padding: '6px 0 2px', fontSize: 12.5, fontWeight: 600, color: 'var(--neon)' }}>
+                        {(bq.discount_code || '').trim()
+                          ? `Promo Code: ${bq.discount_label || (bq.discount_code || '').trim()}`
+                          : ((bq.discount_label || '').trim() ? `Site Promotion: ${(bq.discount_label || '').trim()}` : 'Site-wide Promotion')}
+                        {' · You saved '}{money2(qDiscount)}
+                      </div>
+                    )}
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.18)', margin: '.5rem 0' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 14, fontWeight: 700, color: 'var(--white)', padding: '2px 0' }}>
+                      <span>Add-ons total{qDiscount > 0 ? ' (after discount)' : ''}</span>
+                      <span>{money2(Math.max(0, addonSum - qDiscount))}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, lineHeight: 1.5 }}>
+                      {qDiscount > 0
+                        ? 'The host’s discount is already applied to the add-ons above — remember to factor the same discount into the package price when you send your quote.'
+                        : 'Package price is still on request — quote the package and add this.'}
+                    </div>
+                  </>
+                )}
               </div>
             );
           })()}
