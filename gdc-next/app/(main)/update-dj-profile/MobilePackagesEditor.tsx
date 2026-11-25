@@ -143,8 +143,11 @@ export default function MobilePackagesEditor({
   const [previewSel, setPreviewSel] = useState(0);
   const [previewStart, setPreviewStart] = useState('18:00');
   const [previewEnd, setPreviewEnd] = useState('23:00');
+  // Which add-ons the DJ has toggled on in the sample (by original index into
+  // the add-ons list). Mirrors how a host selects add-ons on the real form.
+  const [previewAddons, setPreviewAddons] = useState<number[]>([]);
   const [pvLb, setPvLb] = useState<{ photos: string[]; details: string; active: number } | null>(null);
-  function openPreview() { setPreviewEvent(selCat || selectedEventTypes[0] || 'general'); setPreviewSel(safeIdx); setPreviewStart('18:00'); setPreviewEnd('23:00'); setPreviewOpen(true); }
+  function openPreview() { setPreviewEvent(selCat || selectedEventTypes[0] || 'general'); setPreviewSel(safeIdx); setPreviewStart('18:00'); setPreviewEnd('23:00'); setPreviewAddons([]); setPreviewOpen(true); }
 
   const { confirm, confirmDialog } = useConfirm();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -785,12 +788,27 @@ export default function MobilePackagesEditor({
           cards.push({ i, pkg: rp, title, details: String((rp as { details?: string }).details || ''), photo: mainPhoto, photos: Array.from(new Set([mainPhoto, ...extra].filter(Boolean))), reqAll: !!(rp as { reqAll?: boolean }).reqAll, tiers: packageTiers(rp) });
         });
         const sel = cards.find((c) => c.i === previewSel) || cards[0];
+        // Active add-ons from this profile (same list hosts see on the real
+        // booking form). Keep each one's original index so selection + total
+        // line up with the list.
+        const activeAddons = (addons || [])
+          .map((a, idx) => ({ a, idx }))
+          .filter(({ a }) => a && a.active && String(a.title || '').trim());
+        const addonTotal = previewAddons.reduce((sum, idx) => {
+          const found = activeAddons.find((x) => x.idx === idx);
+          const p = found ? Number(found.a.price) : 0;
+          return sum + (Number.isFinite(p) ? p : 0);
+        }, 0);
+        const toggleAddon = (idx: number) =>
+          setPreviewAddons((prev) => (prev.includes(idx) ? prev.filter((x) => x !== idx) : [...prev, idx]));
         let summary: { quote: boolean; rate: number; tax: number; deposit: number; total: number } | null = null;
         if (sel) {
           const res = calcPrice(sel.pkg, previewStart, previewEnd, depositPct, false, '', false);
           if (res.isQuote || res.price == null) summary = { quote: true, rate: 0, tax: 0, deposit: 0, total: 0 };
           else {
-            const rate = res.price;
+            // Add-ons fold into the subtotal before tax/deposit — mirrors the
+            // live form and what the server recomputes.
+            const rate = Number((res.price + addonTotal).toFixed(2));
             const tax = taxEnabled ? Number(((rate * taxPct) / 100).toFixed(2)) : 0;
             const total = Number((rate + tax).toFixed(2));
             const deposit = depositPct > 0 ? Number(((total * depositPct) / 100).toFixed(2)) : 0;
@@ -871,6 +889,50 @@ export default function MobilePackagesEditor({
                                 )}
                               </div>
                             )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {activeAddons.length > 0 && (
+                  <div style={{ marginTop: '.9rem' }}>
+                    <div className={bookingStyles.packagesLabel}>Add-ons (optional)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                      {activeAddons.map(({ a, idx }) => {
+                        const on = previewAddons.includes(idx);
+                        const price = Number(a.price);
+                        return (
+                          <div
+                            key={idx}
+                            role="button"
+                            onClick={() => toggleAddon(idx)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '.7rem',
+                              border: `1px solid ${on ? 'var(--neon)' : 'var(--border,rgba(255,255,255,.18))'}`,
+                              borderRadius: 8, padding: '.6rem .7rem', cursor: 'pointer',
+                              background: on ? 'rgba(0,224,164,.08)' : 'rgba(20,20,28,.4)',
+                            }}
+                          >
+                            <div style={{
+                              width: 18, height: 18, flexShrink: 0, borderRadius: 4,
+                              border: `1.5px solid ${on ? 'var(--neon)' : 'var(--muted)'}`,
+                              background: on ? 'var(--neon)' : 'transparent',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              {on && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#050507" strokeWidth="3.5"><polyline points="20 6 9 17 4 12" /></svg>}
+                            </div>
+                            {a.photo && (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img src={a.photo} alt="" onClick={(e) => { e.stopPropagation(); setPvLb({ photos: [a.photo as string], details: a.details || '', active: 0 }); }} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, flexShrink: 0, border: '1px solid var(--border,rgba(255,255,255,.18))' }} />
+                            )}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '.85rem', color: '#fff', fontWeight: 600 }}>{a.title}</div>
+                              {a.details && <div style={{ fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.35, marginTop: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} dangerouslySetInnerHTML={{ __html: a.details }} />}
+                            </div>
+                            <div style={{ fontSize: '.85rem', color: 'var(--neon)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              {Number.isFinite(price) && price > 0 ? `+${cur}${price.toLocaleString()}` : ''}
+                            </div>
                           </div>
                         );
                       })}
