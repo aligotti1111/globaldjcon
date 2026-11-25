@@ -67,11 +67,32 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   const bq = booking as BookingRow & { discount_amount?: number | null; discount_label?: string | null; discount_code?: string | null };
   const _reqAddons = parseBookingAddons((booking as { addons?: unknown }).addons);
   const addonsGross = _reqAddons.reduce((s, a) => s + (Number(a.price) || 0), 0);
-  const addonDiscountAmt = (bq.discount_amount != null && Number(bq.discount_amount) > 0) ? Number(bq.discount_amount) : 0;
-  const addonsNet = Math.max(0, Number((addonsGross - addonDiscountAmt).toFixed(2)));
-  // Fold the add-ons into the total only for quote bookings (where they weren't
-  // already priced into quoted_rate at creation).
+  // Quote bookings price the add-ons here (they weren't in quoted_rate at
+  // create). The discount is applied to the WHOLE booking (package + add-ons),
+  // not separately per add-on, so there's a single discount on the page.
   const foldAddons = !!booking.is_quote && addonsGross > 0;
+
+  // The host's promo code / site sale that was live when they requested. We
+  // carry it into the ONE discount field: a % discount pre-fills the Discount
+  // box (the DJ can adjust it) and applies to the whole booking; a fixed-dollar
+  // promo is applied as a flat amount off. The type + value come from the
+  // discount_label computeDiscount stored ("5% OFF", "CODE (10% off)",
+  // "CODE ($50 off)").
+  const hostDiscount = (() => {
+    if (!booking.is_quote) return { mode: 'none' as const, pct: 0, flat: 0, label: '', code: '' };
+    const label = (bq.discount_label || '').trim();
+    const code = (bq.discount_code || '').trim();
+    const storedAmt = (bq.discount_amount != null && Number(bq.discount_amount) > 0) ? Number(bq.discount_amount) : 0;
+    if (!label && storedAmt <= 0) return { mode: 'none' as const, pct: 0, flat: 0, label: '', code: '' };
+    const pctMatch = label.match(/(\d+(?:\.\d+)?)\s*%/);
+    if (pctMatch) return { mode: 'percent' as const, pct: Math.round(Number(pctMatch[1])), flat: 0, label, code };
+    // Flat: pull the number before "off" in the label; fall back to the stored
+    // amount. (A flat clamped to a tiny add-ons subtotal at create is the known
+    // edge; most flats exceed the add-ons and read true.)
+    const flatMatch = label.match(/([\d,]+(?:\.\d+)?)\s*off/i);
+    const flat = flatMatch ? Number(flatMatch[1].replace(/,/g, '')) : storedAmt;
+    return { mode: 'flat' as const, pct: 0, flat: flat > 0 ? flat : storedAmt, label, code };
+  })();
 
   // Pre-fill from existing values when the DJ is editing a previously
   // sent quote. Empty strings on first quote, populated when re-opening.
@@ -80,7 +101,9 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   // and strip the add-ons to recover the PACKAGE number the DJ originally typed.
   const [price, setPrice] = useState(
     booking.quoted_rate != null
-      ? String(Number((Number(booking.quoted_rate) + Number(booking.offer_discount_amount || 0) - (foldAddons ? addonsNet : 0)).toFixed(2)))
+      // Recover the PACKAGE number the DJ typed: quoted_rate is the net whole-
+      // booking total, so add the discount back and strip the add-ons.
+      ? String(Number((Number(booking.quoted_rate) + Number(bq.discount_amount || 0) - (foldAddons ? addonsGross : 0)).toFixed(2)))
       : ''
   );
   // Add Offer always starts with an empty overtime box — the DJ sets the
@@ -104,12 +127,15 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   const [discountPct, setDiscountPct] = useState(
     booking.offer_discount_pct != null && Number(booking.offer_discount_pct) > 0
       ? String(Math.round(Number(booking.offer_discount_pct)))
-      : ''
+      // Carry the host's % promo/sale into the discount box on a fresh quote.
+      : (hostDiscount.mode === 'percent' ? String(hostDiscount.pct) : '')
   );
   // The discount box stays hidden behind a link until the DJ wants it —
-  // opens automatically when re-editing an offer that already has one.
+  // opens automatically when re-editing an offer, or when a % promo/sale came
+  // in with the request.
   const [showDiscount, setShowDiscount] = useState(
-    booking.offer_discount_pct != null && Number(booking.offer_discount_pct) > 0
+    (booking.offer_discount_pct != null && Number(booking.offer_discount_pct) > 0)
+    || hostDiscount.mode === 'percent'
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -138,17 +164,22 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   // One number, no add-on math: whatever the DJ types is the all-in price
   // for everything listed in this modal.
   const grossPriceNum = !isNaN(priceNum) && priceNum > 0 ? Number(priceNum.toFixed(2)) : 0;
-  // Optional straight % off. Tax and deposit are both calculated on the
-  // DISCOUNTED price — the booker is only taxed on what they actually pay.
-  const discountPctNum = discountPct ? Number(discountPct) : 0;
-  const discountAmount = discountPctNum > 0 && grossPriceNum > 0
-    ? Number(((grossPriceNum * discountPctNum) / 100).toFixed(2))
-    : 0;
-  const netPriceNum = Number((grossPriceNum - discountAmount).toFixed(2));
-  // Subtotal = the DJ's (discounted) package price + the host's discounted
-  // add-ons (for a quote booking). Tax/deposit/stored quoted_rate all build on
-  // this, so the add-ons are part of the total the booker sees and agrees to.
-  const subtotalNum = Number((netPriceNum + (foldAddons ? addonsNet : 0)).toFixed(2));
+  // The pre-discount subtotal is the PACKAGE price the DJ typed + the host's
+  // add-ons (gross). The ONE discount applies to this whole amount.
+  const grossSubtotalNum = Number((grossPriceNum + (foldAddons ? addonsGross : 0)).toFixed(2));
+  // Flat (fixed-dollar) promo → applied as a dollar amount off the whole
+  // booking. Otherwise a straight % (from the Discount box, pre-filled from the
+  // host's % promo/sale, DJ-adjustable) off the whole booking.
+  const flatDiscount = hostDiscount.mode === 'flat' ? Number(hostDiscount.flat) || 0 : 0;
+  const discountPctNum = flatDiscount > 0 ? 0 : (discountPct ? Number(discountPct) : 0);
+  const discountAmount = flatDiscount > 0
+    ? Math.min(grossSubtotalNum, Number(flatDiscount.toFixed(2)))
+    : (discountPctNum > 0 && grossSubtotalNum > 0
+        ? Number(((grossSubtotalNum * discountPctNum) / 100).toFixed(2))
+        : 0);
+  // netPriceNum kept for the "new price" hint under the % box (package only).
+  const netPriceNum = Number((grossPriceNum - (flatDiscount > 0 ? 0 : (grossPriceNum * discountPctNum) / 100)).toFixed(2));
+  const subtotalNum = Number((grossSubtotalNum - discountAmount).toFixed(2));
   // Tax the offer at the DJ's CURRENT rate when they have tax turned on now
   // (the agreement point for a request-price booking). Otherwise fall back to
   // the booking's frozen snapshot %, so a package-priced row keeps its stamped
@@ -244,8 +275,24 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
         // null for clubs — overtime is mobile-only per spec.
         overtime_rate: overtimeFinal,
         counter_message: message.trim() || null,
-        offer_discount_pct: discountAmount > 0 ? discountPctNum : null,
+        // ONE booking-wide discount. Whether it came from the host's promo/sale
+        // (carried in) or the DJ's own %, write it to the main discount_* fields
+        // so every downstream surface (host card, contract, invoice, emails)
+        // shows a single discount off the whole booking — never a separate
+        // add-on discount. offer_discount_* stay populated only in %-mode so
+        // re-opening this modal can pre-fill the editable percentage.
+        offer_discount_pct: (discountAmount > 0 && flatDiscount <= 0) ? discountPctNum : null,
         offer_discount_amount: discountAmount > 0 ? discountAmount : null,
+        discount_amount: discountAmount > 0 ? discountAmount : null,
+        discount_code: discountAmount > 0 ? (hostDiscount.code || null) : null,
+        discount_label: discountAmount > 0
+          ? (flatDiscount > 0
+              ? (hostDiscount.label || `${cur}${discountAmount.toLocaleString()} off`)
+              : (hostDiscount.code ? `${hostDiscount.code} (${discountPctNum}% off)` : `${discountPctNum}% OFF`))
+          : null,
+        // Pre-discount subtotal (package + add-ons) so the host card can
+        // reconcile the single discount back out of the all-in quoted_rate.
+        original_rate: discountAmount > 0 ? grossSubtotalNum : null,
         cocktail_price: cocktailPriceFinal,
         cocktail_included: !isClubBooking && hasCocktail ? true : null,
         ceremony_price: ceremonyPriceFinal,
@@ -289,8 +336,16 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
           : {}),
         overtime_rate: overtimeFinal,
         counter_message: message.trim() || null,
-        offer_discount_pct: discountAmount > 0 ? discountPctNum : null,
+        offer_discount_pct: (discountAmount > 0 && flatDiscount <= 0) ? discountPctNum : null,
         offer_discount_amount: discountAmount > 0 ? discountAmount : null,
+        discount_amount: discountAmount > 0 ? discountAmount : null,
+        discount_code: discountAmount > 0 ? (hostDiscount.code || null) : null,
+        discount_label: discountAmount > 0
+          ? (flatDiscount > 0
+              ? (hostDiscount.label || `${cur}${discountAmount.toLocaleString()} off`)
+              : (hostDiscount.code ? `${hostDiscount.code} (${discountPctNum}% off)` : `${discountPctNum}% OFF`))
+          : null,
+        original_rate: discountAmount > 0 ? grossSubtotalNum : null,
         cocktail_price: cocktailPriceFinal,
         cocktail_included: !isClubBooking && hasCocktail ? true : null,
         ceremony_price: ceremonyPriceFinal,
@@ -684,7 +739,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
               </div>
             </div>
 
-            {showDiscount && (
+            {showDiscount && flatDiscount <= 0 && (
               <div style={{ width: '50%' }}>
                 <label className={styles.counterFormLabel}>Discount</label>
                 <div className={styles.counterAmountRow}>
@@ -717,31 +772,42 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
             </div>
           )}
 
-          {/* Neon link toggles the discount box open / closed. */}
-          <button
-            type="button"
-            onClick={() => {
-              if (showDiscount) setDiscountPct('');
-              setShowDiscount(!showDiscount);
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              marginTop: '.5rem',
-              color: 'var(--neon)',
-              fontSize: '.72rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              textDecoration: 'underline',
-            }}
-          >
-            {showDiscount ? 'Remove discount' : '+ Add discount'}
-          </button>
+          {/* A FIXED-DOLLAR promo the host used is applied automatically to the
+              whole booking — shown here read-only (no % box to edit). */}
+          {flatDiscount > 0 && (
+            <div style={{ marginTop: '.5rem', fontSize: '.72rem', color: 'var(--neon)', fontWeight: 600 }}>
+              {hostDiscount.code ? `Promo Code: ${hostDiscount.code}` : (hostDiscount.label || 'Discount')} — {cur}{discountAmount.toLocaleString()} off the whole booking
+            </div>
+          )}
 
-          {discountAmount > 0 && (
+          {/* Neon link toggles the % discount box open / closed (hidden for a
+              fixed-dollar promo, which can't be a percentage). */}
+          {flatDiscount <= 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (showDiscount) setDiscountPct('');
+                setShowDiscount(!showDiscount);
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                marginTop: '.5rem',
+                color: 'var(--neon)',
+                fontSize: '.72rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                textDecoration: 'underline',
+              }}
+            >
+              {showDiscount ? 'Remove discount' : '+ Add discount'}
+            </button>
+          )}
+
+          {flatDiscount <= 0 && discountAmount > 0 && (
             <div className={styles.depositPreview}>
-              Takes {cur}{discountAmount.toLocaleString()} off — new price {cur}{netPriceNum.toLocaleString()}
+              Takes {cur}{discountAmount.toLocaleString()} off — new price {cur}{subtotalNum.toLocaleString()}
             </div>
           )}
         </div>
@@ -837,22 +903,20 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
               const pkgLineLabel = (isClubBooking ? 'Rate' : (foldAddons ? 'Package price' : 'Total Event Price'))
                 + (includesParts.length ? ` (incl. ${includesParts.join(' & ')})` : '');
               rows.push(line(pkgLineLabel, money(grossPriceNum)));
-              if (discountAmount > 0) {
-                rows.push(line(`Discount (${discountPctNum}%)`, `−${money(discountAmount)}`, { muted: true }));
-                rows.push(line('Discounted price', money(netPriceNum), { top: true }));
-              }
-              // Add-ons (quote bookings): each one itemized, the host's promo/
-              // sale saving, then the discounted add-ons subtotal — all folded
-              // into the Total below.
+              // Add-ons (quote bookings) listed at their full price — the ONE
+              // discount below comes off the package + add-ons together.
               if (foldAddons) {
                 _reqAddons.forEach((a, i) => rows.push(line(a.title || `Add-on ${i + 1}`, money(Number(a.price) || 0), { muted: true })));
-                if (addonDiscountAmt > 0) {
-                  const label = (bq.discount_code || '').trim()
-                    ? `Promo Code: ${bq.discount_label || (bq.discount_code || '').trim()}`
-                    : ((bq.discount_label || '').trim() ? `Site Promotion: ${(bq.discount_label || '').trim()}` : 'Site-wide Promotion');
-                  rows.push(line(label, `−${money(addonDiscountAmt)}`, { muted: true }));
-                }
-                rows.push(line('Add-ons total', money(addonsNet), { top: true }));
+              }
+              // The single booking-wide discount (the host's promo/sale the DJ
+              // carried in, or a % the DJ set). Shown once, off the whole total.
+              if (discountAmount > 0) {
+                const dLabel = flatDiscount > 0
+                  ? (hostDiscount.code ? `Promo Code: ${hostDiscount.code}` : (hostDiscount.label ? `Discount: ${hostDiscount.label}` : 'Discount'))
+                  : (hostDiscount.code ? `Promo Code: ${hostDiscount.code} (${discountPctNum}%)` : `Discount (${discountPctNum}%)`);
+                if (foldAddons) rows.push(line('Subtotal', money(grossSubtotalNum), { top: true }));
+                rows.push(line(dLabel, `−${money(discountAmount)}`, { muted: true }));
+                rows.push(line('Discounted price', money(subtotalNum), { top: true }));
               }
               if (quoteTaxAmount > 0) {
                 rows.push(line(`Sales tax (${quoteTaxPct}%)`, money(quoteTaxAmount)));
