@@ -1175,8 +1175,20 @@ const LANDING_BODY = String.raw`
         <div class="pkghd"><span>Silver Package</span> <span class="pkr"><span class="chk">✓ Selected</span><b id="bSilver">$450</b></span></div>
         <ul class="pkgli"><li>PA system</li><li>MC &amp; live requests</li><li>Setup &amp; breakdown</li></ul>
       </div>
+
+      <label class="lb2">Add-ons <i>(optional)</i> <span class="val" style="font-weight:400;color:#8a8a94;font-size:.62rem">tap to add</span></label>
+      <div class="pkgbox" id="ad_sparks" onclick="selAddon('sparks')">
+        <div class="pkghd"><span>Cold Spark Fountains</span> <span class="pkr"><span class="chk">✓ Added</span><b>+$300</b></span></div>
+        <ul class="pkgli"><li>Two indoor-safe spark units for the first dance or grand entrance</li></ul>
+      </div>
+      <div class="pkgbox" id="ad_booth" onclick="selAddon('booth')">
+        <div class="pkghd"><span>Photo Booth</span> <span class="pkr"><span class="chk">✓ Added</span><b>+$250</b></span></div>
+        <ul class="pkgli"><li>Open-air booth with props and unlimited prints for 3 hours</li></ul>
+      </div>
+
       <div class="quote">
         <div class="ln"><span>Subtotal</span><span id="qSub">$600.00</span></div>
+        <div class="ln" id="qAddonLn" style="display:none"><span>Add-ons</span><span id="qAddon">$0.00</span></div>
         <div class="ln"><span>Tax (8.875%)</span><span id="qTax">$53.25</span></div>
         <div class="ln tot"><span>Total</span><span id="qTot">$653.25</span></div>
         <div class="ln"><span>Deposit due now (15%)</span><span id="qDep">$97.99</span></div>
@@ -1405,6 +1417,10 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.qu
     document.getElementById('pkGold').classList.toggle("on",p==="gold");
     document.getElementById('pkSilver').classList.toggle("on",p==="silver");
     calc();};
+  var ADDON={sparks:300,booth:250}, adSel={};
+  window.selAddon=function(k){adSel[k]=!adSel[k];
+    var el=document.getElementById('ad_'+k); if(el)el.classList.toggle('on',!!adSel[k]);
+    calc();};
   var WED={wCocktail:200,wCeremony:150};
   window.togBtn=function(b){var g=b.parentNode;g.querySelectorAll('button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');};
   window.wYN=function(id,yes){var c=document.getElementById(id);var m=c.querySelector('.wyn.main');
@@ -1422,7 +1438,9 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.qu
     var hrs=Math.max(0,(+en.value)-(+st.value)), ot=Math.max(0,hrs-INCLUDED), otAmt=ot*OT_RATE;
     var addons=surcharge+otAmt+wed;
     set('bGold', whole(BASE.gold+addons)); set('bSilver', whole(BASE.silver+addons));
-    var sub=b+addons, tax=sub*0.08875, tot=sub+tax, dep=tot*0.15, bal=tot-dep;
+    var ad=0; for(var a in adSel){ if(adSel[a]) ad+=ADDON[a]; }
+    var adLn=document.getElementById('qAddonLn'); if(adLn)adLn.style.display=ad>0?'':'none'; set('qAddon',money(ad));
+    var sub=b+addons, taxable=sub+ad, tax=taxable*0.08875, tot=taxable+tax, dep=tot*0.15, bal=tot-dep;
     set('qSub',money(sub)); set('qTax',money(tax)); set('qTot',money(tot)); set('qDep',money(dep)); set('qBal',money(bal));
   }
   evt.onchange=calc; st.onchange=calc; en.onchange=calc; calc();
