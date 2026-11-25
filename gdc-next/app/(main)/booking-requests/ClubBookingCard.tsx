@@ -330,7 +330,7 @@ export default function ClubBookingCard(props: Props) {
                     <span style={{ color: 'var(--neon)' }}>
                       {((b as { discount_code?: string | null }).discount_code || '').trim()
                         ? `Promo Code: ${b.discount_label || (b as { discount_code?: string | null }).discount_code}`
-                        : ((b.discount_label || '').trim() ? `Site Promotion: ${(b.discount_label || '').trim()}` : 'Site-wide Promotion')} · You saved {sym}{Number(b.discount_amount).toLocaleString()}
+                        : ((b.discount_label || '').trim() ? `Site Promotion: ${(b.discount_label || '').trim()}` : 'Site-wide Promotion')} · Host saved {sym}{Number(b.discount_amount).toLocaleString()}
                     </span>
                   </div>
                 )}
