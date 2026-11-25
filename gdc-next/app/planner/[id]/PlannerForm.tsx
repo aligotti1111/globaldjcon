@@ -780,6 +780,13 @@ function Control({
 // Song — search, hear it, tap it. Or type it. Or paste a link.
 // ─────────────────────────────────────────────────────────────────────────
 
+// FEATURE FLAG: the live catalogue search / autocomplete in the song boxes.
+// Flip to true to re-enable it. When false, the boxes become plain text fields
+// — typing a song is saved as entered (and pasted links still work), but no
+// network search runs and no results dropdown appears. The search code below is
+// intentionally left in place; this flag just gates it.
+const SONG_SEARCH_ENABLED = false;
+
 /** "At Last — Etta James" → { title, artist }. One split, on the first dash. */
 function parseSong(s: string): Track {
   const t = s.trim();
@@ -880,6 +887,7 @@ function SongInput({
   // 300ms. Every keystroke would be a request per letter — "uptown funk" is 11
   // calls for one answer, against a catalogue that rate-limits.
   useEffect(() => {
+    if (!SONG_SEARCH_ENABLED) return;
     if (picked) return;
     const q = text.trim();
     if (q.length < 2) { setHits([]); return; }
@@ -958,7 +966,7 @@ function SongInput({
     <div className={styles.songWrap}>
       <input
         className={styles.input}
-        placeholder="Search a song, or type it"
+        placeholder={SONG_SEARCH_ENABLED ? 'Search a song, or type it' : 'Type the song (title — artist), or paste a link'}
         value={text}
         onChange={(e) => {
           setText(e.target.value);
