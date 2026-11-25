@@ -23,6 +23,7 @@ import styles from './bookingRequests.module.css';
 import { formatLongDate } from './helpers';
 import type { BookingRow } from './page';
 import { currencySymbol } from '@/lib/constants';
+import { parseBookingAddons } from '@/lib/addons';
 
 interface Props {
   booking: BookingRow;
@@ -453,6 +454,47 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                 )}
               </div>
             )}
+
+            {/* Add-ons the host chose — a quote-only package has no price, but
+                the add-ons DO, and any promo code / site sale was applied to
+                them. Show the DJ the add-ons, the saving, and the discounted
+                add-ons total so they fold it into their Total Event Price. */}
+            {(() => {
+              const reqAddons = parseBookingAddons((booking as { addons?: unknown }).addons);
+              if (reqAddons.length === 0) return null;
+              const bq = booking as BookingRow & { discount_amount?: number | null; discount_label?: string | null; discount_code?: string | null };
+              const money2 = (n: number) => `${cur}${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+              const addonSum = reqAddons.reduce((s, a) => s + (Number(a.price) || 0), 0);
+              const addonDisc = (bq.discount_amount != null && Number(bq.discount_amount) > 0) ? Number(bq.discount_amount) : 0;
+              const hasPkg = !!booking.package_title || !!(booking.event_date || booking.start_time || booking.end_time);
+              return (
+                <div style={{ marginTop: hasPkg ? '.5rem' : 0, paddingTop: hasPkg ? '.45rem' : 0, borderTop: hasPkg ? '1px solid var(--border)' : 'none' }}>
+                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.25rem' }}>
+                    Add-ons/Extras
+                  </div>
+                  {reqAddons.map((a, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: '.82rem', color: 'var(--white)', padding: '2px 0' }}>
+                      <span>{a.title}</span><span>{money2(Number(a.price) || 0)}</span>
+                    </div>
+                  ))}
+                  {addonDisc > 0 && (
+                    <div style={{ textAlign: 'center', fontSize: '.72rem', fontWeight: 600, color: 'var(--neon)', padding: '3px 0' }}>
+                      {(bq.discount_code || '').trim()
+                        ? `Promo Code: ${bq.discount_label || (bq.discount_code || '').trim()}`
+                        : ((bq.discount_label || '').trim() ? `Site Promotion: ${(bq.discount_label || '').trim()}` : 'Site-wide Promotion')}
+                      {' · host saved '}{money2(addonDisc)}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: '.82rem', fontWeight: 700, color: 'var(--white)', borderTop: '1px solid rgba(255,255,255,.14)', marginTop: 4, paddingTop: 4 }}>
+                    <span>Add-ons total{addonDisc > 0 ? ' (after discount)' : ''}</span>
+                    <span>{money2(Math.max(0, addonSum - addonDisc))}</span>
+                  </div>
+                  <div style={{ fontSize: '.68rem', color: 'var(--muted)', marginTop: 5, lineHeight: 1.5 }}>
+                    Add this to your Total Event Price below{addonDisc > 0 ? ', and apply the same discount to your package price' : ''}.
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
