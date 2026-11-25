@@ -171,6 +171,22 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
 
+  // Warm the routes this menu leads to BEFORE the user clicks. The dropdown
+  // Links only begin prefetching once the menu is open, so a quick click still
+  // waits on the server render. Prefetching on hover/focus of the trigger (and
+  // again on open) means the Dashboard etc. are already compiled + data-warm by
+  // the time the item is clicked — the main cause of the "slow at times" lag.
+  const prefetchedRef = useRef(false);
+  function warmRoutes() {
+    if (prefetchedRef.current) return;
+    prefetchedRef.current = true;
+    try {
+      router.prefetch('/upcoming-bookings');
+      router.prefetch('/past-bookings');
+      if (bookingEnabled || isTeammate) router.prefetch('/booking-settings');
+    } catch { /* prefetch is best-effort */ }
+  }
+
   // Open the Stripe billing portal (manage plan, update card, download
   // invoices). If the DJ has no paid subscription yet (comped or free — no
   // Stripe customer), fall back to the plans page so the click is never a
@@ -246,7 +262,9 @@ export default function HeaderDjMenu({ name, slug, avatarUrl, bookingEnabled, is
         ref={triggerRef}
         type="button"
         className="hdr-dj-menu-trigger"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => { warmRoutes(); setOpen((v) => !v); }}
+        onMouseEnter={warmRoutes}
+        onFocus={warmRoutes}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Account menu"
