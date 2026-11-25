@@ -89,6 +89,8 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
   const [open, setOpen] = useState(false);
   const [respondItems, setRespondItems] = useState<Item[]>([]);
   const [awaitingItems, setAwaitingItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(false);
+  const loadedOnceRef = useRef(false);
   const [tab, setTab] = useState<Tab>('respond');
   const [isDesktop, setIsDesktop] = useState(false);
   const [pos, setPos] = useState<{ top: number; right: number }>({ top: 68, right: 16 });
@@ -113,6 +115,10 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
 
   async function load() {
     if (!user?.id) return;
+    // Only show the spinner on the FIRST load — on reopen we keep the previous
+    // results on screen and refresh silently (stale-while-revalidate), so the
+    // panel never flashes empty.
+    if (!loadedOnceRef.current) setLoading(true);
     const db = createClient();
     try {
       const cols = 'id, requester_name, event_type, venue_type, event_date, created_at, quoted_rate, offer_amount, counter_rate, currency, total_with_tax, tax_pct';
@@ -174,6 +180,7 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
       // Always open on the Respond (request) tab by default — never Awaiting.
       setTab('respond');
     } catch { /* non-fatal */ }
+    finally { setLoading(false); loadedOnceRef.current = true; }
   }
 
   function openPanel() {
@@ -221,6 +228,7 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
         title="Booking Requests"
         aria-label="Booking Requests"
         onClick={onIconClick}
+        onMouseEnter={() => { try { router.prefetch(MORE_HREF); } catch { /* best-effort */ } }}
         style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
       >
         <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -278,7 +286,9 @@ export default function BookingRequestsMenu({ count }: { count: number }) {
 
           {shown.length === 0 ? (
             <div style={{ padding: '22px 15px', color: 'rgba(255,255,255,.5)', fontSize: '.85rem', textAlign: 'center' }}>
-              {tab === 'respond' ? 'Nothing needs your response.' : 'Nothing awaiting a response.'}
+              {loading
+                ? 'Loading…'
+                : (tab === 'respond' ? 'Nothing needs your response.' : 'Nothing awaiting a response.')}
             </div>
           ) : (
             shown.map((it) => (
