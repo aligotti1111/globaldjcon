@@ -666,7 +666,10 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
         <div className={styles.counterFormGroup}>
           <div style={{ display: 'flex', gap: '.75rem', alignItems: 'flex-end' }}>
             <div style={{ width: showDiscount ? '50%' : '50%' }}>
-              <label className={styles.counterFormLabel}>{priceLabel}</label>
+              <label className={styles.counterFormLabel}>
+                {priceLabel}
+                {foldAddons && <span style={{ color: 'var(--muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> (excluding add-ons)</span>}
+              </label>
               <div className={styles.counterAmountRow}>
                 <span className={styles.counterCurrencySym}>{cur}</span>
                 <input
