@@ -804,11 +804,6 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
             </button>
           )}
 
-          {flatDiscount <= 0 && discountAmount > 0 && (
-            <div className={styles.depositPreview}>
-              Takes {cur}{discountAmount.toLocaleString()} off — new price {cur}{subtotalNum.toLocaleString()}
-            </div>
-          )}
         </div>
 
         {/* Overtime — mobile DJ only. Club bar/club bookings don't use
