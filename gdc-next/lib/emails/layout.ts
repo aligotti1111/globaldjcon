@@ -15,13 +15,21 @@ import { escHtml, fmtDate, fmtTime, fmtTimeRange } from './format';
 // images. The inner table forces horizontal centering reliably.
 export function emailTemplate(content: string): string {
   return `
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;">
+<style>
+  /* On phones, shrink the side padding (and outer gutter) so the content
+     boxes stretch nearly full-width instead of sitting in a narrow column. */
+  @media only screen and (max-width:600px) {
+    .gdc-outer { padding-left:8px !important; padding-right:8px !important; }
+    .gdc-body { padding-left:14px !important; padding-right:14px !important; }
+  }
+</style>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" class="gdc-outer" style="background:#f5f5f7;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;">
 <tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
 <tr><td style="background:#000000;padding:24px 32px;" align="center">
 <div style="font-family:'Bebas Neue',Impact,Arial,sans-serif;font-size:28px;letter-spacing:.06em;color:#00f5c4;font-weight:700;">GLOBAL DJ CONNECT</div>
 </td></tr>
-<tr><td style="padding:32px;">${content}</td></tr>
+<tr><td class="gdc-body" style="padding:32px;">${content}</td></tr>
 <tr><td style="background:#f8f8f8;padding:20px 32px;text-align:center;border-top:1px solid #e0e0e0;">
 <p style="margin:0;color:#888;font-size:11px;line-height:1.6;">© ${new Date().getFullYear()} Global DJ Connect · <a href="${SITE_URL}" style="color:#888;">globaldjconnect.com</a></p>
 </td></tr></table>
