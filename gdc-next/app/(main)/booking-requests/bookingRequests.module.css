@@ -803,6 +803,13 @@
   transition: border-color .2s;
 }
 .counterAmountInput:focus { border-color: var(--neon); }
+/* Hide the native number-input spinner arrows (price + overtime fields). */
+.counterAmountInput::-webkit-outer-spin-button,
+.counterAmountInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.counterAmountInput[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 .counterMsgInput {
   width: 100%;
   background: var(--deep);
