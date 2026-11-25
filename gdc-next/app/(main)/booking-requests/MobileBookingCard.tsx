@@ -38,8 +38,10 @@ export default function MobileBookingCard(props: Props) {
     booking: b, isIncoming, djZip, djCity, djState, djTravelDistance, ...shellProps
   } = props;
   // Pull onViewHistory so the in-card "View History" link can open
-  // the read-only HistoryModal. shellProps still passes it through.
-  const { onViewHistory } = shellProps;
+  // the read-only HistoryModal. onSendQuote opens the Add Offer modal
+  // (used by the "Add price" link in the quote-stage add-on block).
+  // shellProps still passes both through.
+  const { onViewHistory, onSendQuote } = shellProps;
   // The booking's frozen currency symbol (legacy rows → USD).
   const cur = currencySymbol((b as BookingRow & { currency?: string }).currency || 'USD');
 
@@ -461,19 +463,53 @@ export default function MobileBookingCard(props: Props) {
             // full Cost Breakdown below itemizes the add-ons and the single
             // booking-wide discount, so showing prices here too would double them.
             const showQuotePricing = isQuote && !hasPrice && addonSum > 0;
+            // Per-add-on discount factor (the host's promo/sale was applied to
+            // the add-ons at booking time). Each add-on shows its ORIGINAL price
+            // struck through next to the discounted one.
+            const discFactor = (qDiscount > 0 && addonSum > 0) ? Math.max(0, addonSum - qDiscount) / addonSum : 1;
+            const canAddPrice = showQuotePricing && isIncoming && typeof onSendQuote === 'function';
             return (
               <div style={{ marginTop: '.9rem' }}>
                 <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 .7rem' }} />
-                <div className={styles.tinyLabel} style={{ marginBottom: 6, fontSize: 13, letterSpacing: '.08em', color: 'var(--neon)', fontWeight: 700 }}>Add-ons/Extras</div>
-                {reqAddons.map((a, i) => (
-                  <div
-                    key={i}
-                    style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 14, color: 'var(--white)', padding: '3px 0' }}
-                  >
-                    <span>{a.title}</span>
-                    {showQuotePricing && <span>{money2(Number(a.price) || 0)}</span>}
+                {/* Package price — blank until the DJ adds an offer. The "Add
+                    price" link opens the same Add Offer modal as the button. */}
+                {showQuotePricing && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, fontSize: 14, color: 'var(--white)', padding: '3px 0', marginBottom: 2 }}>
+                    <span style={{ fontWeight: 700 }}>Package price</span>
+                    {canAddPrice ? (
+                      <button
+                        type="button"
+                        onClick={() => onSendQuote!(b)}
+                        style={{ background: 'none', border: 'none', color: 'var(--neon)', fontWeight: 700, fontSize: 14, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                      >
+                        Add price
+                      </button>
+                    ) : (
+                      <span style={{ color: 'var(--muted)' }}>Price on request</span>
+                    )}
                   </div>
-                ))}
+                )}
+                <div className={styles.tinyLabel} style={{ marginBottom: 6, fontSize: 13, letterSpacing: '.08em', color: 'var(--neon)', fontWeight: 700 }}>Add-ons/Extras</div>
+                {reqAddons.map((a, i) => {
+                  const p = Number(a.price) || 0;
+                  const dp = Math.round(p * discFactor * 100) / 100;
+                  return (
+                    <div
+                      key={i}
+                      style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 14, color: 'var(--white)', padding: '3px 0' }}
+                    >
+                      <span>{a.title}</span>
+                      {showQuotePricing && (
+                        <span>
+                          {qDiscount > 0 ? (
+                            <span style={{ textDecoration: 'line-through', color: 'var(--muted)', marginRight: 6 }}>{money2(p)}</span>
+                          ) : null}
+                          {money2(qDiscount > 0 ? dp : p)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
                 {showQuotePricing && (
                   <>
                     {qDiscount > 0 && (
@@ -485,14 +521,16 @@ export default function MobileBookingCard(props: Props) {
                       </div>
                     )}
                     <div style={{ borderTop: '1px solid rgba(255,255,255,0.18)', margin: '.5rem 0' }} />
+                    {/* Total Event Cost — blank (—) until the DJ adds a package
+                        price. Once priced, the full Cost Breakdown replaces this. */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 14, fontWeight: 700, color: 'var(--white)', padding: '2px 0' }}>
-                      <span>Add-ons total{qDiscount > 0 ? ' (after discount)' : ''}</span>
-                      <span>{money2(Math.max(0, addonSum - qDiscount))}</span>
+                      <span>Total Event Cost</span>
+                      <span style={{ color: 'var(--muted)' }}>—</span>
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, lineHeight: 1.5 }}>
-                      {qDiscount > 0
-                        ? 'The host’s discount carries over automatically — when you add your offer, it’s applied to your whole quote (package + add-ons), so you don’t need to factor it in yourself.'
-                        : 'Package price is still on request — quote the package and add this.'}
+                      {canAddPrice
+                        ? 'Add your package price to set the Total Event Cost. The host’s discount carries over automatically to your whole quote (package + add-ons).'
+                        : 'Package price is still on request.'}
                     </div>
                   </>
                 )}
