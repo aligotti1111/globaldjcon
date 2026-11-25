@@ -457,7 +457,10 @@ export default function MobileBookingCard(props: Props) {
             const money2 = (n: number) => `${cur}${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
             const addonSum = reqAddons.reduce((s, a) => s + (Number(a.price) || 0), 0);
             const qDiscount = (isQuote && bq.discount_amount != null && Number(bq.discount_amount) > 0) ? Number(bq.discount_amount) : 0;
-            const showQuotePricing = isQuote && addonSum > 0;
+            // Only before the DJ has priced the quote. Once a price exists the
+            // full Cost Breakdown below itemizes the add-ons and the single
+            // booking-wide discount, so showing prices here too would double them.
+            const showQuotePricing = isQuote && !hasPrice && addonSum > 0;
             return (
               <div style={{ marginTop: '.9rem' }}>
                 <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 .7rem' }} />
