@@ -932,7 +932,7 @@ export default function BookingDetails({
             : (label ? `Site Promotion: ${label}` : 'Site-wide Promotion');
           return (
             <div style={{ textAlign: 'center', padding: '4px 0 0', fontSize: '.8rem', fontWeight: 600, color: 'var(--neon)' }}>
-              {why} · You saved {money(bkDiscountAmt)}
+              {why} · Host saved {money(bkDiscountAmt)}
               {booking.original_rate != null ? ` (was ${money(booking.original_rate)})` : ''}
             </div>
           );
