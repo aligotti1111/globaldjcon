@@ -59,14 +59,28 @@ function formatTime12(t: string | null): string {
 }
 
 export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, onClose, onSaved }: Props) {
+  // ADD-ONS the host chose on a quote-only package. They have real prices and
+  // (when a promo code / site sale was live) a frozen discount — the DJ enters
+  // just the PACKAGE price and the site folds the discounted add-ons into the
+  // quote total. Only quote-mode bookings carry unpriced add-ons; a package-
+  // priced booking already had its add-ons inside quoted_rate.
+  const bq = booking as BookingRow & { discount_amount?: number | null; discount_label?: string | null; discount_code?: string | null };
+  const _reqAddons = parseBookingAddons((booking as { addons?: unknown }).addons);
+  const addonsGross = _reqAddons.reduce((s, a) => s + (Number(a.price) || 0), 0);
+  const addonDiscountAmt = (bq.discount_amount != null && Number(bq.discount_amount) > 0) ? Number(bq.discount_amount) : 0;
+  const addonsNet = Math.max(0, Number((addonsGross - addonDiscountAmt).toFixed(2)));
+  // Fold the add-ons into the total only for quote bookings (where they weren't
+  // already priced into quoted_rate at creation).
+  const foldAddons = !!booking.is_quote && addonsGross > 0;
+
   // Pre-fill from existing values when the DJ is editing a previously
   // sent quote. Empty strings on first quote, populated when re-opening.
-  // quoted_rate is stored ALREADY discounted, so re-opening an offer has to add
-  // the discount back to show the DJ the number they originally typed —
-  // otherwise the saved % would get applied a second time.
+  // quoted_rate is stored ALREADY discounted AND (for a folded quote) already
+  // includes the net add-ons — so re-opening has to add the DJ's discount back
+  // and strip the add-ons to recover the PACKAGE number the DJ originally typed.
   const [price, setPrice] = useState(
     booking.quoted_rate != null
-      ? String(Number(booking.quoted_rate) + Number(booking.offer_discount_amount || 0))
+      ? String(Number((Number(booking.quoted_rate) + Number(booking.offer_discount_amount || 0) - (foldAddons ? addonsNet : 0)).toFixed(2)))
       : ''
   );
   // Add Offer always starts with an empty overtime box — the DJ sets the
@@ -131,7 +145,10 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
     ? Number(((grossPriceNum * discountPctNum) / 100).toFixed(2))
     : 0;
   const netPriceNum = Number((grossPriceNum - discountAmount).toFixed(2));
-  const subtotalNum = netPriceNum;
+  // Subtotal = the DJ's (discounted) package price + the host's discounted
+  // add-ons (for a quote booking). Tax/deposit/stored quoted_rate all build on
+  // this, so the add-ons are part of the total the booker sees and agrees to.
+  const subtotalNum = Number((netPriceNum + (foldAddons ? addonsNet : 0)).toFixed(2));
   // Tax the offer at the DJ's CURRENT rate when they have tax turned on now
   // (the agreement point for a request-price booking). Otherwise fall back to
   // the booking's frozen snapshot %, so a package-priced row keeps its stamped
@@ -455,43 +472,20 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
               </div>
             )}
 
-            {/* Add-ons the host chose — a quote-only package has no price, but
-                the add-ons DO, and any promo code / site sale was applied to
-                them. Show the DJ the add-ons, the saving, and the discounted
-                add-ons total so they fold it into their Total Event Price. */}
-            {(() => {
-              const reqAddons = parseBookingAddons((booking as { addons?: unknown }).addons);
-              if (reqAddons.length === 0) return null;
-              const bq = booking as BookingRow & { discount_amount?: number | null; discount_label?: string | null; discount_code?: string | null };
-              const money2 = (n: number) => `${cur}${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-              const addonSum = reqAddons.reduce((s, a) => s + (Number(a.price) || 0), 0);
-              const addonDisc = (bq.discount_amount != null && Number(bq.discount_amount) > 0) ? Number(bq.discount_amount) : 0;
+            {/* Add-ons the host chose — listed here for context. Their prices,
+                the discount and the running total are itemized in the quote
+                summary box at the bottom (the site folds them into the Total
+                automatically, so the DJ only enters the package price). */}
+            {_reqAddons.length > 0 && (() => {
               const hasPkg = !!booking.package_title || !!(booking.event_date || booking.start_time || booking.end_time);
               return (
                 <div style={{ marginTop: hasPkg ? '.5rem' : 0, paddingTop: hasPkg ? '.45rem' : 0, borderTop: hasPkg ? '1px solid var(--border)' : 'none' }}>
                   <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '.5rem', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '.25rem' }}>
                     Add-ons/Extras
                   </div>
-                  {reqAddons.map((a, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: '.82rem', color: 'var(--white)', padding: '2px 0' }}>
-                      <span>{a.title}</span><span>{money2(Number(a.price) || 0)}</span>
-                    </div>
+                  {_reqAddons.map((a, i) => (
+                    <div key={i} style={{ fontSize: '.82rem', color: 'var(--white)', padding: '2px 0' }}>{a.title}</div>
                   ))}
-                  {addonDisc > 0 && (
-                    <div style={{ textAlign: 'center', fontSize: '.72rem', fontWeight: 600, color: 'var(--neon)', padding: '3px 0' }}>
-                      {(bq.discount_code || '').trim()
-                        ? `Promo Code: ${bq.discount_label || (bq.discount_code || '').trim()}`
-                        : ((bq.discount_label || '').trim() ? `Site Promotion: ${(bq.discount_label || '').trim()}` : 'Site-wide Promotion')}
-                      {' · host saved '}{money2(addonDisc)}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: '.82rem', fontWeight: 700, color: 'var(--white)', borderTop: '1px solid rgba(255,255,255,.14)', marginTop: 4, paddingTop: 4 }}>
-                    <span>Add-ons total{addonDisc > 0 ? ' (after discount)' : ''}</span>
-                    <span>{money2(Math.max(0, addonSum - addonDisc))}</span>
-                  </div>
-                  <div style={{ fontSize: '.68rem', color: 'var(--muted)', marginTop: 5, lineHeight: 1.5 }}>
-                    Add this to your Total Event Price below{addonDisc > 0 ? ', and apply the same discount to your package price' : ''}.
-                  </div>
                 </div>
               );
             })()}
@@ -823,10 +817,23 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                 </div>
               );
               const rows = [];
-              rows.push(line(isClubBooking ? 'Rate' : 'Total Event Price', money(grossPriceNum)));
+              rows.push(line(isClubBooking ? 'Rate' : (foldAddons ? 'Package price' : 'Total Event Price'), money(grossPriceNum)));
               if (discountAmount > 0) {
                 rows.push(line(`Discount (${discountPctNum}%)`, `−${money(discountAmount)}`, { muted: true }));
                 rows.push(line('Discounted price', money(netPriceNum), { top: true }));
+              }
+              // Add-ons (quote bookings): each one itemized, the host's promo/
+              // sale saving, then the discounted add-ons subtotal — all folded
+              // into the Total below.
+              if (foldAddons) {
+                _reqAddons.forEach((a, i) => rows.push(line(a.title || `Add-on ${i + 1}`, money(Number(a.price) || 0), { muted: true })));
+                if (addonDiscountAmt > 0) {
+                  const label = (bq.discount_code || '').trim()
+                    ? `Promo Code: ${bq.discount_label || (bq.discount_code || '').trim()}`
+                    : ((bq.discount_label || '').trim() ? `Site Promotion: ${(bq.discount_label || '').trim()}` : 'Site-wide Promotion');
+                  rows.push(line(label, `−${money(addonDiscountAmt)}`, { muted: true }));
+                }
+                rows.push(line('Add-ons total', money(addonsNet), { top: true }));
               }
               if (quoteTaxAmount > 0) {
                 rows.push(line(`Sales tax (${quoteTaxPct}%)`, money(quoteTaxAmount)));
