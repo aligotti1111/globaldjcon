@@ -795,6 +795,12 @@ export default function MobileBookingForm({
     if (!venueName.trim() && fail('Please enter the venue name.', 'mpf-venue-name')) return;
     if (!venueAddress.trim() && fail('Please enter the venue address.', 'mpf-venue-address')) return;
     if (!startTime && fail('Please select a start time.', 'mpf-start-time')) return;
+    // On a WEDDING the host must answer the cocktail-hour and ceremony yes/no
+    // questions — they're required whether the package is priced or a quote.
+    if (isWedding) {
+      if (cocktailNeeded == null && fail('Please choose whether you need music for cocktail hour.', 'mpf-cocktail-needed')) return;
+      if (ceremonyNeeded == null && fail('Please choose whether you need music for the ceremony.', 'mpf-ceremony-needed')) return;
+    }
     // When cocktail-hour music is needed, both the start time and the
     // same-room choice are required (weddings only).
     if (wantsCocktail) {
@@ -1682,7 +1688,7 @@ export default function MobileBookingForm({
         {/* Cocktail-hour subsection — WEDDINGS ONLY. General/Mitzvah and other
             mobile events no longer offer a cocktail-hour add-on. */}
         {cocktailEligible && isWedding && (
-          <div className={styles.weddingFields}>
+          <div className={styles.weddingFields} id="mpf-cocktail-needed">
             <div className={styles.cocktailHeaderRow}>
               <div className={styles.weddingHeader}>Cocktail Hour</div>
             </div>
@@ -1777,7 +1783,7 @@ export default function MobileBookingForm({
         {/* Music-for-ceremony subsection — WEDDINGS ONLY. Independent add-on
             that mirrors the cocktail-hour block above. */}
         {isWedding && (
-          <div className={styles.weddingFields}>
+          <div className={styles.weddingFields} id="mpf-ceremony-needed">
             <div className={styles.cocktailHeaderRow}>
               <div className={styles.weddingHeader}>Music For Ceremony</div>
             </div>
