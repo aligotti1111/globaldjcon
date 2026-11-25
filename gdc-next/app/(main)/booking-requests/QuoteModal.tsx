@@ -708,6 +708,15 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
             )}
           </div>
 
+          {/* Weddings: the Total Event Price the DJ enters is understood to
+              cover the cocktail hour and/or ceremony music, so say so right
+              under the field (before any discount). */}
+          {!isClubBooking && isWedding && (hasCocktail || hasCeremony) && (
+            <div style={{ marginTop: '.4rem', fontSize: '.72rem', color: 'var(--muted)', lineHeight: 1.45 }}>
+              Includes {[hasCeremony ? 'Music For Ceremony' : null, hasCocktail ? 'Cocktail Hour' : null].filter(Boolean).join(' and ')}.
+            </div>
+          )}
+
           {/* Neon link toggles the discount box open / closed. */}
           <button
             type="button"
@@ -820,7 +829,14 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                 </div>
               );
               const rows = [];
-              rows.push(line(isClubBooking ? 'Rate' : (foldAddons ? 'Package price' : 'Total Event Price'), money(grossPriceNum)));
+              // Weddings: note the package price covers the cocktail hour /
+              // ceremony right on the Package line.
+              const includesParts = (!isClubBooking && isWedding)
+                ? [hasCeremony ? 'Music For Ceremony' : null, hasCocktail ? 'Cocktail Hour' : null].filter(Boolean)
+                : [];
+              const pkgLineLabel = (isClubBooking ? 'Rate' : (foldAddons ? 'Package price' : 'Total Event Price'))
+                + (includesParts.length ? ` (incl. ${includesParts.join(' & ')})` : '');
+              rows.push(line(pkgLineLabel, money(grossPriceNum)));
               if (discountAmount > 0) {
                 rows.push(line(`Discount (${discountPctNum}%)`, `−${money(discountAmount)}`, { muted: true }));
                 rows.push(line('Discounted price', money(netPriceNum), { top: true }));
