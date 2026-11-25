@@ -946,7 +946,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                       color: 'var(--neon)',
                     }}
                   >
-                    {dSummary} · You saved {money(discountAmount)}
+                    {dSummary} · Host saved {money(discountAmount)}
                   </div>,
                 );
               } else {
