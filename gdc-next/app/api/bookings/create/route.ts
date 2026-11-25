@@ -535,7 +535,12 @@ export async function POST(req: Request) {
     const addonsTotal = addonSnapshot.reduce((sum, a) => sum + a.price, 0);
 
     // Fold add-ons into the subtotal (package price + add-ons), mirroring the
-    // client. A quote (price null) can't be priced, so add-ons don't change it.
+    // client. A quote (price null) can't be priced on the PACKAGE, but the
+    // add-ons the host chose DO have real prices — so when the package is
+    // request-only and a promo code / site-wide sale applies, the discount is
+    // applied to the ADD-ONS and sent to the DJ with the quote request. The
+    // package itself stays `is_quote` (quoted_rate null); only the add-on side
+    // carries a price + discount.
     const subtotalWithAddons = finalPrice.price != null ? finalPrice.price + addonsTotal : null;
 
     // Load the code's true redemption count into `settings` so the usage cap
@@ -543,8 +548,15 @@ export async function POST(req: Request) {
     await applyLiveUsageCount(djRow.id, promoCode, settings);
     const finalDiscount: DiscountResult =
       subtotalWithAddons != null
+        // Priced package → discount on package + add-ons together.
         ? computeDiscount(subtotalWithAddons, settings, promoCode, dateKey, djTz)
-        : { amount: 0, kind: null, label: '' };
+        // Quote package WITH priced add-ons → discount applies to the add-ons.
+        : (addonsTotal > 0
+            ? computeDiscount(addonsTotal, settings, promoCode, dateKey, djTz)
+            : { amount: 0, kind: null, label: '' });
+    // finalTotal is the PACKAGE+add-ons total; it stays null for a quote so the
+    // booking remains a price request. The add-on discount lives on
+    // discount_amount / original_rate (below) for the DJ to see.
     const finalTotal =
       subtotalWithAddons != null ? Math.max(0, subtotalWithAddons - finalDiscount.amount) : null;
 
@@ -668,8 +680,12 @@ export async function POST(req: Request) {
       tax_amount: taxAmount,
       total_with_tax: totalWithTax,
       // Discount snapshot — what was applied, for the DJ's records + usage
-      // history. original_rate keeps the pre-discount total for reference.
-      original_rate: finalDiscount.amount > 0 ? subtotalWithAddons : null,
+      // history. original_rate keeps the pre-discount total for reference. On a
+      // quote package the discount applies to the add-ons, so original_rate is
+      // the pre-discount ADD-ONS subtotal (the package is still unpriced).
+      original_rate: finalDiscount.amount > 0
+        ? (subtotalWithAddons ?? (addonsTotal > 0 ? addonsTotal : null))
+        : null,
       discount_code: finalDiscount.kind === 'code' ? promoCode : null,
       // Chosen add-ons snapshot (title + price, frozen now). Priced into
       // quoted_rate above; stored here only for the itemized display. Null when
