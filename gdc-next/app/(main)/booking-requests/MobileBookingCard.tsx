@@ -491,7 +491,7 @@ export default function MobileBookingCard(props: Props) {
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, lineHeight: 1.5 }}>
                       {qDiscount > 0
-                        ? 'The host’s discount is already applied to the add-ons above — remember to factor the same discount into the package price when you send your quote.'
+                        ? 'The host’s discount carries over automatically — when you add your offer, it’s applied to your whole quote (package + add-ons), so you don’t need to factor it in yourself.'
                         : 'Package price is still on request — quote the package and add this.'}
                     </div>
                   </>
