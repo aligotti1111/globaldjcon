@@ -751,7 +751,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                     onWheel={(e) => e.currentTarget.blur()}
                     onChange={(e) => setDiscountPct(e.target.value)}
                     className={styles.counterAmountInput}
-                    style={{ width: '100%', padding: '.5rem .4rem' }}
+                    style={{ width: '100%', padding: '.4rem .4rem' }}
                   >
                     <option value="">—</option>
                     {Array.from({ length: 99 }, (_, i) => i + 1).map((p) => (
@@ -869,7 +869,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
               const line = (
                 label: string,
                 val: string,
-                o?: { bold?: boolean; muted?: boolean; top?: boolean },
+                o?: { bold?: boolean; muted?: boolean; top?: boolean; strike?: string },
               ) => (
                 <div
                   key={label}
@@ -891,7 +891,12 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                   }}
                 >
                   <span>{label}</span>
-                  <span>{val}</span>
+                  <span>
+                    {o?.strike ? (
+                      <span style={{ textDecoration: 'line-through', color: 'var(--muted)', marginRight: 6, fontWeight: 400 }}>{o.strike}</span>
+                    ) : null}
+                    {val}
+                  </span>
                 </div>
               );
               const rows = [];
@@ -902,42 +907,69 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                 : [];
               const pkgLineLabel = (isClubBooking ? 'Rate' : (foldAddons ? 'Package price' : 'Total Event Price'))
                 + (includesParts.length ? ` (incl. ${includesParts.join(' & ')})` : '');
-              rows.push(line(pkgLineLabel, money(grossPriceNum)));
-              // Add-ons (quote bookings) listed at their full price — the ONE
-              // discount below comes off the package + add-ons together.
-              if (foldAddons) {
-                _reqAddons.forEach((a, i) => rows.push(line(a.title || `Add-on ${i + 1}`, money(Number(a.price) || 0), { muted: true })));
-              }
-              // The single booking-wide discount (the host's promo/sale the DJ
-              // carried in, or a % the DJ set). Shown once, off the whole total.
+              const r2 = (n: number) => Math.round(n * 100) / 100;
+
               if (discountAmount > 0) {
-                const dLabel = flatDiscount > 0
-                  ? (hostDiscount.code ? `Promo Code: ${hostDiscount.code}` : (hostDiscount.label ? `Discount: ${hostDiscount.label}` : 'Discount'))
+                // DISCOUNT VIEW — show each line's ORIGINAL price struck through
+                // next to its discounted price. The one booking-wide discount is
+                // split across the package + add-ons proportionally (so the lines
+                // sum exactly to the discounted subtotal), then summarized once,
+                // centered, at the very bottom of the box.
+                const factor = grossSubtotalNum > 0 ? subtotalNum / grossSubtotalNum : 1;
+                const addonDisc = foldAddons ? _reqAddons.map((a) => r2((Number(a.price) || 0) * factor)) : [];
+                const addonDiscSum = addonDisc.reduce((s, n) => s + n, 0);
+                const pkgDisc = r2(subtotalNum - addonDiscSum); // package absorbs any rounding remainder
+                rows.push(line(pkgLineLabel, money(pkgDisc), { strike: money(grossPriceNum) }));
+                if (foldAddons) {
+                  _reqAddons.forEach((a, i) =>
+                    rows.push(line(a.title || `Add-on ${i + 1}`, money(addonDisc[i]), { muted: true, strike: money(Number(a.price) || 0) })),
+                  );
+                }
+                if (quoteTaxAmount > 0) {
+                  rows.push(line(`Sales tax (${quoteTaxPct}%)`, money(quoteTaxAmount), { top: true }));
+                }
+                rows.push(
+                  line('Total Event Cost', quoteTotalWithTax != null ? money(quoteTotalWithTax) : '—', { bold: true, top: true }),
+                );
+                if (depositPct > 0 && depositAmount) {
+                  rows.push(line(`Deposit (${depositPct}%) — to reserve`, money(Number(depositAmount)), { top: true }));
+                  rows.push(line('Balance due day of event', money(Number(((quoteTotalWithTax || 0) - Number(depositAmount)).toFixed(2))), { bold: true }));
+                }
+                // The discount, centered, at the bottom of the box.
+                const dSummary = flatDiscount > 0
+                  ? (hostDiscount.code ? `Promo Code: ${hostDiscount.code}` : (hostDiscount.label || 'Discount'))
                   : (hostDiscount.code ? `Promo Code: ${hostDiscount.code} (${discountPctNum}%)` : `Discount (${discountPctNum}%)`);
-                if (foldAddons) rows.push(line('Subtotal', money(grossSubtotalNum), { top: true }));
-                rows.push(line(dLabel, `−${money(discountAmount)}`, { muted: true }));
-                rows.push(line('Discounted price', money(subtotalNum), { top: true }));
-              }
-              if (quoteTaxAmount > 0) {
-                rows.push(line(`Sales tax (${quoteTaxPct}%)`, money(quoteTaxAmount)));
-              }
-              rows.push(
-                line('Total', quoteTotalWithTax != null ? money(quoteTotalWithTax) : '—', {
-                  bold: true,
-                  top: true,
-                }),
-              );
-              if (depositPct > 0 && depositAmount) {
                 rows.push(
-                  line(`Deposit (${depositPct}%) — to reserve`, money(Number(depositAmount)), { top: true }),
+                  <div
+                    key="__disc"
+                    style={{
+                      marginTop: '.55rem',
+                      paddingTop: '.5rem',
+                      borderTop: '1px solid rgba(255,255,255,.12)',
+                      textAlign: 'center',
+                      fontSize: '.74rem',
+                      fontWeight: 700,
+                      color: 'var(--neon)',
+                    }}
+                  >
+                    {dSummary} · You saved {money(discountAmount)}
+                  </div>,
                 );
+              } else {
+                rows.push(line(pkgLineLabel, money(grossPriceNum)));
+                if (foldAddons) {
+                  _reqAddons.forEach((a, i) => rows.push(line(a.title || `Add-on ${i + 1}`, money(Number(a.price) || 0), { muted: true })));
+                }
+                if (quoteTaxAmount > 0) {
+                  rows.push(line(`Sales tax (${quoteTaxPct}%)`, money(quoteTaxAmount), foldAddons ? { top: true } : undefined));
+                }
                 rows.push(
-                  line(
-                    'Balance due day of event',
-                    money(Number(((quoteTotalWithTax || 0) - Number(depositAmount)).toFixed(2))),
-                    { bold: true },
-                  ),
+                  line('Total Event Cost', quoteTotalWithTax != null ? money(quoteTotalWithTax) : '—', { bold: true, top: true }),
                 );
+                if (depositPct > 0 && depositAmount) {
+                  rows.push(line(`Deposit (${depositPct}%) — to reserve`, money(Number(depositAmount)), { top: true }));
+                  rows.push(line('Balance due day of event', money(Number(((quoteTotalWithTax || 0) - Number(depositAmount)).toFixed(2))), { bold: true }));
+                }
               }
               rows.push(
                 <div
