@@ -153,7 +153,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
   // Mobile: plain "Event Price" label — the hour count is shown as a soft
   // sub-hint next to it rather than crammed into the uppercase label,
   // which read awkwardly (e.g. "6 HOUR EVENT PRICE").
-  const priceLabel = isClubBooking ? 'Set Rate' : 'Total Event Price';
+  const priceLabel = isClubBooking ? 'Set Rate' : 'Package price';
 
   // Live deposit preview — recomputes as user types. Tax comes from the
   // booking's FROZEN snapshot % (tax_pct, stamped at creation) — never the
@@ -723,7 +723,6 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
             <div style={{ width: showDiscount ? '50%' : '50%' }}>
               <label className={styles.counterFormLabel}>
                 {priceLabel}
-                {foldAddons && <span style={{ color: 'var(--muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}> (excluding add-ons)</span>}
               </label>
               <div className={styles.counterAmountRow}>
                 <span className={styles.counterCurrencySym}>{cur}</span>
@@ -751,7 +750,7 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
                     onWheel={(e) => e.currentTarget.blur()}
                     onChange={(e) => setDiscountPct(e.target.value)}
                     className={styles.counterAmountInput}
-                    style={{ width: '100%', padding: '.4rem .4rem' }}
+                    style={{ width: '100%', padding: '.28rem .4rem' }}
                   >
                     <option value="">—</option>
                     {Array.from({ length: 99 }, (_, i) => i + 1).map((p) => (
