@@ -994,7 +994,10 @@ export default function QuoteModal({ booking, depositPct, taxEnabled, taxPct, on
           <button
             type="button"
             onClick={submit}
-            disabled={submitting}
+            // Can't send an offer without a package price — keep the button
+            // inert (and visibly dimmed) until a valid price is entered.
+            disabled={submitting || !price.trim() || isNaN(priceNum) || priceNum <= 0}
+            title={(!price.trim() || isNaN(priceNum) || priceNum <= 0) ? 'Enter a package price first' : undefined}
             className={styles.counterSubmitBtn}
           >
             {submitting
