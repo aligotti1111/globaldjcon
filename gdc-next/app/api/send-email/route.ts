@@ -994,7 +994,7 @@ export async function POST(req: Request) {
     const admin = createAdminClient();
     const { data: booking } = await admin
       .from('bookings')
-      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, event_type, package_title, package_details, quoted_rate, counter_rate, overtime_rate, counter_message, currency, cocktail_needed, cocktail_included, cocktail_price, ceremony_needed, ceremony_included, ceremony_price, offer_discount_pct, offer_discount_amount, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount')
+      .select('id, dj_id, requester_id, event_date, start_time, end_time, venue_name, venue_address, event_type, package_title, package_details, addons, quoted_rate, counter_rate, overtime_rate, counter_message, currency, cocktail_needed, cocktail_included, cocktail_price, ceremony_needed, ceremony_included, ceremony_price, offer_discount_pct, offer_discount_amount, tax_pct, tax_amount, total_with_tax, deposit_pct, deposit_amount')
       .eq('id', bookingId)
       .maybeSingle<{
         id: string;
@@ -1008,6 +1008,7 @@ export async function POST(req: Request) {
         event_type: string | null;
         package_title: string | null;
         package_details: string | null;
+        addons: unknown;
         quoted_rate: number | null;
         counter_rate: number | null;
         overtime_rate: number | null;
@@ -1071,8 +1072,14 @@ export async function POST(req: Request) {
     // and the balance due on the event day. Renders nothing when there are no
     // extras (no add-ons / tax / deposit), so a flat-price booking isn't given
     // a redundant one-line "breakdown".
+    // Chosen add-ons — itemized in the PRICE box (Package price + each add-on
+    // with its price) and listed under the package in the package box.
+    const offerAddons = parseBookingAddons(booking.addons);
+
     const billBox = billBreakdownBox({
       quotedRate: booking.quoted_rate,
+      packageTitle: booking.package_title,
+      addons: offerAddons,
       cocktailPrice: booking.cocktail_price,
       ceremonyPrice: booking.ceremony_price,
       taxPct: booking.tax_pct,
@@ -1095,6 +1102,7 @@ export async function POST(req: Request) {
       venueAddress: booking.venue_address || undefined,
       packageTitle: booking.package_title || undefined,
       packageDetails: booking.package_details || undefined,
+      addons: offerAddons,
       rateLabel: 'Offer',
       rateValue,
     });
