@@ -2045,22 +2045,41 @@ export default function MobileBookingForm({
                 the DJ's quote). */}
             {(priceResult.isQuote || priceResult.price == null) && addonsTotal > 0 && (() => {
               const money2 = (n: number) => `${cur}${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-              const net = Math.max(0, addonsTotal - addonDiscount.amount);
+              // Per-add-on discount factor (promo/sale applies to the add-ons).
+              const discFactor = (addonDiscount.amount > 0 && addonsTotal > 0)
+                ? Math.max(0, addonsTotal - addonDiscount.amount) / addonsTotal : 1;
+              const chosen = selectedAddons
+                .map((origIdx) => mobAddons.find((x) => x._idx === origIdx))
+                .filter((a): a is NonNullable<typeof a> => !!a && !!(a.title || '').trim());
+              const rowStyle = { display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' } as const;
               return (
                 <div style={{ maxWidth: 300, margin: '12px auto 0', textAlign: 'left', borderTop: '1px solid var(--border,rgba(255,255,255,.18))', paddingTop: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.85rem', color: 'var(--white,#fff)', padding: '3px 0' }}>
-                    <span>Add-ons subtotal</span><span>{money2(addonsTotal)}</span>
+                  {/* Package price — on request, same format as the add-ons below. */}
+                  <div style={{ ...rowStyle, fontWeight: 700, marginBottom: 2 }}>
+                    <span>Package price</span><span style={{ color: 'var(--muted,#8a8aa0)' }}>Request</span>
                   </div>
+                  {chosen.map((a, i) => {
+                    const p = Number(a.price) || 0;
+                    const dp = Math.round(p * discFactor * 100) / 100;
+                    return (
+                      <div key={i} style={rowStyle}>
+                        <span>{a.title}</span>
+                        <span>
+                          {addonDiscount.amount > 0 ? (
+                            <s style={{ color: 'var(--muted,#8a8aa0)', textDecorationColor: 'var(--muted,#8a8aa0)', marginRight: 6 }}>{money2(p)}</s>
+                          ) : null}
+                          {money2(addonDiscount.amount > 0 ? dp : p)}
+                        </span>
+                      </div>
+                    );
+                  })}
                   {addonDiscount.amount > 0 && (
-                    <div style={{ textAlign: 'center', padding: '2px 0', fontSize: '.78rem', fontWeight: 600, color: 'var(--neon,#00e0a4)' }}>
+                    <div style={{ textAlign: 'center', padding: '6px 0 2px', fontSize: '.78rem', fontWeight: 600, color: 'var(--neon,#00e0a4)' }}>
                       {addonDiscount.label} · You save {money2(addonDiscount.amount)}
                     </div>
                   )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1rem', fontWeight: 800, color: 'var(--neon,#00e0a4)', borderTop: '1px solid var(--border,rgba(255,255,255,.2))', paddingTop: 8, marginTop: 6 }}>
-                    <span>Add-ons total{addonDiscount.amount > 0 ? ' (after discount)' : ''}</span><span>{money2(net)}</span>
-                  </div>
                   <div style={{ fontSize: '.72rem', color: 'var(--muted,#8a8aa0)', marginTop: 6, lineHeight: 1.5 }}>
-                    The DJ will add the package price to this when they send your quote.
+                    The DJ will add the package price when they send your quote.
                   </div>
                 </div>
               );
