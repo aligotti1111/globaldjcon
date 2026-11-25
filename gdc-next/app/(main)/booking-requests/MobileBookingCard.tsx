@@ -480,7 +480,7 @@ export default function MobileBookingCard(props: Props) {
                       <button
                         type="button"
                         onClick={() => onSendQuote!(b)}
-                        style={{ background: 'none', border: 'none', color: 'var(--neon)', fontWeight: 700, fontSize: 14, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                        style={{ background: 'none', border: 'none', color: 'var(--neon)', fontWeight: 700, fontSize: 14, cursor: 'pointer', padding: 0, textDecoration: 'underline', textTransform: 'uppercase', letterSpacing: '.04em' }}
                       >
                         Add price
                       </button>
@@ -489,7 +489,7 @@ export default function MobileBookingCard(props: Props) {
                     )}
                   </div>
                 )}
-                <div className={styles.tinyLabel} style={{ marginBottom: 6, fontSize: 13, letterSpacing: '.08em', color: 'var(--neon)', fontWeight: 700 }}>Add-ons/Extras</div>
+                <div className={styles.tinyLabel} style={{ marginTop: showQuotePricing ? 14 : 0, marginBottom: 6, fontSize: 13, letterSpacing: '.08em', color: 'var(--neon)', fontWeight: 700 }}>Add-ons/Extras</div>
                 {reqAddons.map((a, i) => {
                   const p = Number(a.price) || 0;
                   const dp = Math.round(p * discFactor * 100) / 100;
